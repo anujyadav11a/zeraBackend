@@ -15,8 +15,13 @@ import cookieParser from 'cookie-parser';
  app.use(express.static("public"))
  app.use(cookieParser())
 
+ //User-Route
  import userRouter from "./routes/user.routes.js";
  app.use("/api/v1/User", userRouter)
+
+ //Project-route
+ import { Projectrouter } from './routes/project.route.js';
+ app.use("/api/v1/Project",Projectrouter)
 
  export default app
 

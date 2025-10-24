@@ -8,7 +8,7 @@ const userSchema = new Schema({
   password: { type: String, required: true },
 
 
-  role: { type: String, enum: ["admin", "ProjectLeader","developer","viewer",], default: "employee" },
+  role: { type: String, enum: ["admin", "project_head","developer","viewer",], default: "developer" },
    refreshToken: {
         type: String
     },
@@ -52,4 +52,4 @@ userSchema.methods.generateRefreshToken = function () {
     })
 }
 
-export const User = mongoose.model("User", userSchema);
+export const User = mongoose.model("User", userSchema)
