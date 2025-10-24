@@ -1,5 +1,5 @@
-import { asyncHandler } from "../utils/asyncHandler";
-import { ApiError } from "../utils/apierror";
+import { asyncHandler } from "../utils/asyncHandler.js";
+import { ApiError } from "../utils/apierror.js";
 
 const roleAuthorization=(allowedRoles)=>{
     return asyncHandler(async(req ,res, next)=>{
@@ -14,3 +14,4 @@ const roleAuthorization=(allowedRoles)=>{
         next()
     })
 }
+export {roleAuthorization}

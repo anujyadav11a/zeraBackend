@@ -1,8 +1,9 @@
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/apierror.js";  
-import { User } from "../models/user.models.js";
+import {User} from "../models/user.models.js"
 import { ApiResponse } from "../utils/apiResponse.js";
 import bcrypt from "bcrypt"
+import mongoose from "mongoose";
 
 const generateAccessandRefreshToken=async(userId)=>{
     try {
@@ -21,25 +22,26 @@ const generateAccessandRefreshToken=async(userId)=>{
     }
 }
 
-const createDefaultadmin=asyncHandler(async(req,res)=>{
-
-    const existingAdmin=User.findOne({role:admin})
-    if(!existingAdmin){
-       const hasPassword= await bcrypt.hash("admin@123",10)
-
-       await User.create({
-        username:"admin12",
-        password:hasPassword,
-        email:"admin@gmail.com",
-        name:"Admin",
-        role:"admin"
-
-       })
-    }
-    else{
-        throw new ApiResponse(200,"admin already exist")
-    }
-})
+const createDefaultadmin = async ()=>{
+     try {
+        const existingAdmin= await User.findOne({role:"admin"})
+       if(!existingAdmin){
+          const hasPassword= await bcrypt.hash("admin@123",10)
+   
+          await User.create({
+           username:"admin12",
+           password:hasPassword,
+           email:"admin@gmail.com",
+           name:"Admin",
+           role:"admin"
+   
+          })
+       }
+     } catch (error) {
+       throw new ApiError(500,"internal server error")
+     }
+    
+}
 
 const userRegister= asyncHandler(async (req,res)=>{
     const {username,name,email,password}=req.body
@@ -55,7 +57,7 @@ const userRegister= asyncHandler(async (req,res)=>{
         throw new ApiError(409,"user already exist with this email or username")
     }
 
-    const user= await new User.create({
+    const user= await  User.create({
         username,
         name,
         email,
@@ -136,6 +138,7 @@ const userLogout=asyncHandler(async(req,res)=>{
 
 export {userRegister,
      createDefaultadmin,
-     userLogin
+     userLogin,
+     userLogout
 
     }
