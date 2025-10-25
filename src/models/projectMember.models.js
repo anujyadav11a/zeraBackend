@@ -13,7 +13,7 @@ const projectMemberSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ["ProjectLeader", "member"],
+    enum: ["ProjectLeader", "developer"],
     default: "member"
   },
   joinedAt: {
