@@ -102,7 +102,7 @@ const addMemberTOproject = asyncHandler(async (req, res)=>{
     const { ProjectId,userId,role}=req.body
 
     if([ProjectId,userId,role].some((field)=>{
-        field?.trim===""
+        field?.trim()===""
     })){
         throw new ApiError(400, "all fields are required")
     }
@@ -134,7 +134,7 @@ const addMemberTOproject = asyncHandler(async (req, res)=>{
 
     return res.status(200)
     .json(
-        ApiResponse(
+       new ApiResponse(
             200,
             addMember,
             "new member added to project successfully"
@@ -147,7 +147,10 @@ const addMemberTOproject = asyncHandler(async (req, res)=>{
 const ListALLMembersofProject = asyncHandler(async (req, res) => {
     const { projectId } = req.params;
 
-    
+    if (!mongoose.Types.ObjectId.isValid(projectId)) {
+  throw new ApiError(400, 'Invalid projectId');
+}
+
 
     // ensure project exists
     const projectExist = await Project.findById(projectId).select('_id').lean();
@@ -161,7 +164,7 @@ const ListALLMembersofProject = asyncHandler(async (req, res) => {
     const { role, isActive, search, sortBy, sortOrder } = req.query;
 
     // build base match for aggregation
-    const match = { project: mongoose.Types.ObjectId(projectId) };
+    const match = { project: new mongoose.Types.ObjectId(projectId) };
 
     const validRoles = ['project_head', 'admin', 'member'];
     if (role) {
