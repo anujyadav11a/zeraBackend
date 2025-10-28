@@ -4,7 +4,8 @@ import { Project } from "../models/project.models.js";
 import { ProjectMember } from "../models/projectMember.models.js";
 
  const projectMemberAuthorization = asyncHandler(async (req, res, next) => {
-  const { projectId } = req.params;
+  // Accept projectId provided in params, body, query, or from previously validated req.project
+  const projectId = req.params?.projectId || req.body?.projectId || req.query?.projectId || (req.project && String(req.project._id)) || req.projectId;
 
   if (!projectId || (typeof projectId === "string" && projectId.trim() === "")) {
     throw new ApiError(400, "projectId is required");

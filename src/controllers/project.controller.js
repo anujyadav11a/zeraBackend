@@ -101,9 +101,8 @@ const createProject = asyncHandler(async (req, res) => {
 const addMemberTOproject = asyncHandler(async (req, res)=>{
     const { ProjectId,userId,role}=req.body
 
-    if([ProjectId,userId,role].some((field)=>{
-        field?.trim()===""
-    })){
+    // validate required fields (supports non-string ids as well)
+    if ([ProjectId, userId, role].some(field => !field || (typeof field === 'string' && field.trim() === ''))) {
         throw new ApiError(400, "all fields are required")
     }
 
@@ -127,6 +126,9 @@ const addMemberTOproject = asyncHandler(async (req, res)=>{
         joinedAt:new Date(),
         isActive:true
     })
+    if (addMember){
+        Project.memberCount++;
+    }
 
     if(!addMember){
         throw new ApiError(500,"failed to add member to project")
@@ -252,28 +254,30 @@ return res.status(200).json(new ApiResponse(200, {
 });
 
 const removeMemberFromProject = asyncHandler(async( req, res)=>{
-    const {projectId,userId}=req.body
+    // allow middleware to provide projectId (req.projectId) or fall back to body/params/query
+    const bodyProjectId = req.body?.projectId || req.body?.ProjectId;
+    const projectId = req.projectId || bodyProjectId || req.params?.projectId || req.query?.projectId;
+    const { userId } = req.body;
 
     
-    if([projectId,userId].some((field)=>{
-        field?.trim===""
-    })){
+
+    if ([projectId, userId].some(field => !field || (typeof field === 'string' && field.trim() === ''))) {
         throw new ApiError(400, "all fields are required")
     }
 
-    const removeMember= await ProjectMember.findByIdAndDelete(({
-        project:projectId,
-        user:userId
-    }))
-    if(!removeMember){
-        throw new  ApiError(500,"failed to remove the member from project")
+    
+
+    const removeMember = await ProjectMember.findOne({ project: projectId, user: userId });
+   
+
+    if (!removeMember) {
+        return res.status(404).json(new ApiResponse(404, null, "user is not member of project"));
     }
 
-    return res.status(200)
-    json(
-        new ApiResponse(200,"member removed succesfully")
+    // delete by id to avoid passing a document to deleteOne
+    await ProjectMember.deleteOne({ _id: removeMember._id });
 
-    )
+    return res.status(200).json(new ApiResponse(200, null, "member removed successfully"));
 
 })
 

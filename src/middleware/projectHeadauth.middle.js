@@ -7,7 +7,7 @@ const projectHeadAuthorization = asyncHandler(async (req, res, next) => {
   
   const projectId =
     req.body?.projectId || req.body?.ProjectId || req.params?.projectId || req.query?.projectId;
- 
+  console.log("projectid",projectId)
   
   if (!projectId || (typeof projectId === "string" && projectId.trim() === "")) {
     throw new ApiError(400, "projectId is required");
@@ -25,7 +25,7 @@ const projectHeadAuthorization = asyncHandler(async (req, res, next) => {
   }
 
   
-  const projectHeadId = project.createdBy && project.createdBy.toString
+  const projectHeadId =  project.createdBy && project.createdBy.toString
     ? project.createdBy.toString()
     : String(project.projectHead);
   const userId = req.user && req.user._id && req.user._id.toString ? req.user._id.toString() : String(req.user?._id);
@@ -36,6 +36,7 @@ const projectHeadAuthorization = asyncHandler(async (req, res, next) => {
   }
 
   req.project = project;
+ req.projectId = projectId;
   next();
 });
 
