@@ -126,9 +126,21 @@ const addMemberTOproject = asyncHandler(async (req, res)=>{
         joinedAt:new Date(),
         isActive:true
     })
-    if (addMember){
-        Project.memberCount++;
-    }
+    
+
+      
+        try {
+            await Project.findByIdAndUpdate(ProjectId, { $inc: { memberCount: 1 } });
+        } catch (err) {
+           
+            try {
+                await ProjectMember.deleteOne({ _id: addMember._id });
+            } catch (rollbackErr) {
+                
+                throw new ApiError(500, "Member added but failed to update project count; manual cleanup may be required");
+            }
+            throw new ApiError(500, "failed to update project member count");
+        }
 
     if(!addMember){
         throw new ApiError(500,"failed to add member to project")
@@ -274,8 +286,40 @@ const removeMemberFromProject = asyncHandler(async( req, res)=>{
         return res.status(404).json(new ApiResponse(404, null, "user is not member of project"));
     }
 
-    // delete by id to avoid passing a document to deleteOne
-    await ProjectMember.deleteOne({ _id: removeMember._id });
+    
+    const deleteResult = await ProjectMember.deleteOne({ _id: removeMember._id });
+
+    if (!deleteResult || deleteResult.deletedCount === 0) {
+        throw new ApiError(500, "failed to remove member from project");
+    }
+
+    
+    try {
+        await Project.findByIdAndUpdate(projectId, { $inc: { memberCount: -1 } });
+
+        
+        const proj = await Project.findById(projectId).select('memberCount');
+        if (proj && typeof proj.memberCount === 'number' && proj.memberCount < 0) {
+            await Project.findByIdAndUpdate(projectId, { $set: { memberCount: 0 } });
+        }
+    } catch (err) {
+        
+        const payload = {
+            project: removeMember.project,
+            user: removeMember.user,
+            role: removeMember.role,
+            joinedAt: removeMember.joinedAt,
+            isActive: removeMember.isActive
+        };
+        try {
+            await ProjectMember.create(payload);
+        } catch (rollbackErr) {
+          
+            throw new ApiError(500, "Member removed but failed to update project count; manual cleanup may be required");
+        }
+
+        throw new ApiError(500, "failed to update project member count");
+    }
 
     return res.status(200).json(new ApiResponse(200, null, "member removed successfully"));
 
