@@ -1,6 +1,7 @@
 import mongoose, {Schema} from 'mongoose';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
+import { ROLES, USER_ROLES } from '../constants/roles.js';
 
 const userSchema = new Schema({
     name: { type: String, required: true },
@@ -8,7 +9,7 @@ const userSchema = new Schema({
   password: { type: String, required: true },
 
 
-    role: { type: String, enum: ["admin", "leader", "developer", "viewer"], default: "developer" },
+  role: { type: String, enum: USER_ROLES, default: ROLES.DEVELOPER },
    refreshToken: {
         type: String
     },

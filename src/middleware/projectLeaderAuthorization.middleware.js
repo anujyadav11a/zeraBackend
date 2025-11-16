@@ -1,6 +1,7 @@
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/apierror.js";
 import { ProjectMember } from "../models/projectMember.models.js";
+import { ROLES } from "../constants/roles.js";
 
 // Allows access only to project leader (ProjectMember.role === 'leader') or global admin (req.user.role === 'admin')
 const projectLeaderAuthorization = asyncHandler(async (req, res, next) => {
@@ -23,12 +24,12 @@ const projectLeaderAuthorization = asyncHandler(async (req, res, next) => {
   }
 
   // allow global admin
-  if (req.user && req.user.role === 'admin') {
+  if (req.user && req.user.role === ROLES.ADMIN) {
     return next();
   }
 
   // check if requester is a leader on the project
-  const leader = await ProjectMember.findOne({ project: projectId, user: req.user._id, role: 'leader' });
+  const leader = await ProjectMember.findOne({ project: projectId, user: req.user._id, role: ROLES.LEADER });
   if (!leader) {
     throw new ApiError(403, 'Access denied. Only project leader or admin can perform this action.');
   }
