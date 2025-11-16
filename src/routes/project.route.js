@@ -10,7 +10,8 @@ import {
     addMemberTOproject,
     ListALLMembersofProject,
     removeMemberFromProject,
-    getProjectDetails
+    getProjectDetails,
+    
 } from "../controllers/project.controller.js"
 
 const Projectrouter= Router();
