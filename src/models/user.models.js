@@ -8,7 +8,7 @@ const userSchema = new Schema({
   password: { type: String, required: true },
 
 
-  role: { type: String, enum: ["admin", "project_head","developer","viewer",], default: "developer" },
+    role: { type: String, enum: ["admin", "leader", "developer", "viewer"], default: "developer" },
    refreshToken: {
         type: String
     },

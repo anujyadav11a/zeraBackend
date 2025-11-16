@@ -63,7 +63,7 @@ const createProject = asyncHandler(async (req, res) => {
 
             // Upsert ProjectMember
             const filter = { project: projectCreate._id, user: req.user._id };
-            const update = { $setOnInsert: { project: projectCreate._id, user: req.user._id, role: "project_head" } };
+            const update = { $setOnInsert: { project: projectCreate._id, user: req.user._id, role: "leader" } };
             await ProjectMember.findOneAndUpdate(filter, update, { upsert: true, new: true, session, setDefaultsOnInsert: true });
 
             // increment memberCount atomically
@@ -81,7 +81,7 @@ const createProject = asyncHandler(async (req, res) => {
         projectCreate = await Project.create(projectPayload);
         try {
             const filter = { project: projectCreate._id, user: req.user._id };
-            const update = { $setOnInsert: { project: projectCreate._id, user: req.user._id, role: "ProjectLeader" } };
+            const update = { $setOnInsert: { project: projectCreate._id, user: req.user._id, role: "leader" } };
             await ProjectMember.findOneAndUpdate(filter, update, { upsert: true, new: true, setDefaultsOnInsert: true });
             await Project.findByIdAndUpdate(projectCreate._id, { $inc: { memberCount: 1 } });
         } catch (err) {
@@ -106,8 +106,10 @@ const addMemberTOproject = asyncHandler(async (req, res)=>{
         throw new ApiError(400, "all fields are required")
     }
 
-    if(["project_head","admin"].includes(role)){
-        throw new ApiError(400,"invalid role")
+    // validate role against ProjectMember enum
+    const allowedRolesForMember = ["leader", "developer", "member", "viewer"];
+    if (!allowedRolesForMember.includes(role)) {
+        throw new ApiError(400, "invalid role")
     }
 
     const memberexist = await ProjectMember.findOne({
@@ -180,7 +182,7 @@ const ListALLMembersofProject = asyncHandler(async (req, res) => {
     // build base match for aggregation
     const match = { project: new mongoose.Types.ObjectId(projectId) };
 
-    const validRoles = ['project_head', 'admin', 'member'];
+    const validRoles = ['leader', 'developer', 'member', 'viewer'];
     if (role) {
         if (!validRoles.includes(role)) throw new ApiError(400, 'invalid role filter');
         match.role = role;
@@ -355,6 +357,35 @@ const getProjectDetails = asyncHandler(async (req,res)=>{
 
 
 })
+
+export const changeMemberRole = asyncHandler(async (req, res) => {
+    const { memberId } = req.params;
+    const { role } = req.body;
+    // Validate against the ProjectMember schema enum: leader, developer, member, viewer
+    const allowedRoles = ["leader", "developer", "member", "viewer"];
+    if (!role || typeof role !== 'string' || !allowedRoles.includes(role)) {
+        return res.status(400).json({ message: "Invalid role. Allowed roles: leader, developer, member, viewer" });
+    }
+
+    // If middleware attached targetMember (projectLeaderAuthorization when called with memberId), reuse it
+    let member = req.targetMember || (await ProjectMember.findById(memberId));
+    if (!member) {
+        return res.status(404).json({ message: "Project member not found" });
+    }
+
+    // (Optional) Prevent non-admins from changing their own role
+    if (String(member.user) === String(req.user._id) && req.user.role !== 'admin') {
+        return res.status(403).json({ message: "You cannot change your own role" });
+    }
+
+    member.role = role;
+    await member.save();
+
+    res.status(200).json({
+        message: "Project member role updated successfully",
+        member,
+    });
+});
 
 export {
     createProject,
