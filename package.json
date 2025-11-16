@@ -6,7 +6,9 @@
   "type": "module",
   "scripts": {
      "start": "node .",
-     "dev": "nodemon -r dotenv/config --experimental-json-modules src/index.js"
+    "dev": "nodemon -r dotenv/config --experimental-json-modules src/index.js",
+    "roles:check": "node ./scripts/check_and_migrate_roles.js",
+    "roles:migrate": "node ./scripts/check_and_migrate_roles.js --migrate"
   },
   "keywords": [
     "node.js",
