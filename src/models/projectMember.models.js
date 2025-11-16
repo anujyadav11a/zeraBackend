@@ -1,3 +1,5 @@
+import { MEMBER_ROLES, ROLES } from '../constants/roles.js';
+
 const projectMemberSchema = new mongoose.Schema(
   {
     project: {
@@ -14,8 +16,8 @@ const projectMemberSchema = new mongoose.Schema(
 
     role: {
       type: String,
-      enum: ["leader", "developer", "member", "viewer"],
-      default: "member",
+      enum: MEMBER_ROLES,
+      default: ROLES.MEMBER,
     },
 
     joinedAt: {

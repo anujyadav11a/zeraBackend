@@ -1,6 +1,8 @@
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/apierror.js";
 import { Project } from "../models/project.models.js";
+import { ProjectMember } from "../models/projectMember.models.js";
+import { ROLES } from "../constants/roles.js";
 
 
 const projectHeadAuthorization = asyncHandler(async (req, res, next) => {
@@ -25,15 +27,36 @@ const projectHeadAuthorization = asyncHandler(async (req, res, next) => {
   }
 
   
-  const projectHeadId =  project.createdBy && project.createdBy.toString
-    ? project.createdBy.toString()
+  // Prefer using createdBy ObjectId; call toString() correctly.
+  const projectHeadId = project && project.createdBy
+    ? (typeof project.createdBy.toString === 'function' ? project.createdBy.toString() : String(project.createdBy))
     : String(project.projectHead);
   const userId = req.user && req.user._id && req.user._id.toString ? req.user._id.toString() : String(req.user?._id);
 
 
-  if (projectHeadId !== userId) {
-    throw new ApiError(403, "Access denied. Only project head can perform this action.");
+  // Allow creator
+  if (projectHeadId === userId) {
+    req.project = project;
+    req.projectId = projectId;
+    return next();
   }
+
+  // Allow global admin
+  if (req.user && req.user.role === ROLES.ADMIN) {
+    req.project = project;
+    req.projectId = projectId;
+    return next();
+  }
+
+  // Fallback: check ProjectMember role 'leader' (if creator isn't the caller)
+  const leaderMember = await ProjectMember.findOne({ project: projectId, user: req.user._id, role: ROLES.LEADER });
+  if (leaderMember) {
+    req.project = project;
+    req.projectId = projectId;
+    return next();
+  }
+
+  throw new ApiError(403, "Access denied. Only project head can perform this action.");
 
   req.project = project;
  req.projectId = projectId;

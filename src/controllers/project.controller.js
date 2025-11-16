@@ -3,6 +3,7 @@ import { ApiError } from "../utils/apierror.js";
 import { Project } from "../models/project.models.js";
 import { ProjectMember } from "../models/projectMember.models.js";
 import { User } from "../models/user.models.js";
+import { ROLES, MEMBER_ROLES } from "../constants/roles.js";
 import { ApiResponse } from "../utils/apiResponse.js";  
 import mongoose from "mongoose";
 import { buildquery } from "../utils/quirybuilder.js";
@@ -63,7 +64,7 @@ const createProject = asyncHandler(async (req, res) => {
 
             // Upsert ProjectMember
             const filter = { project: projectCreate._id, user: req.user._id };
-            const update = { $setOnInsert: { project: projectCreate._id, user: req.user._id, role: "leader" } };
+            const update = { $setOnInsert: { project: projectCreate._id, user: req.user._id, role: ROLES.LEADER } };
             await ProjectMember.findOneAndUpdate(filter, update, { upsert: true, new: true, session, setDefaultsOnInsert: true });
 
             // increment memberCount atomically
@@ -81,7 +82,7 @@ const createProject = asyncHandler(async (req, res) => {
         projectCreate = await Project.create(projectPayload);
         try {
             const filter = { project: projectCreate._id, user: req.user._id };
-            const update = { $setOnInsert: { project: projectCreate._id, user: req.user._id, role: "leader" } };
+            const update = { $setOnInsert: { project: projectCreate._id, user: req.user._id, role: ROLES.LEADER } };
             await ProjectMember.findOneAndUpdate(filter, update, { upsert: true, new: true, setDefaultsOnInsert: true });
             await Project.findByIdAndUpdate(projectCreate._id, { $inc: { memberCount: 1 } });
         } catch (err) {
@@ -107,7 +108,7 @@ const addMemberTOproject = asyncHandler(async (req, res)=>{
     }
 
     // validate role against ProjectMember enum
-    const allowedRolesForMember = ["leader", "developer", "member", "viewer"];
+    const allowedRolesForMember = MEMBER_ROLES;
     if (!allowedRolesForMember.includes(role)) {
         throw new ApiError(400, "invalid role")
     }
@@ -182,7 +183,7 @@ const ListALLMembersofProject = asyncHandler(async (req, res) => {
     // build base match for aggregation
     const match = { project: new mongoose.Types.ObjectId(projectId) };
 
-    const validRoles = ['leader', 'developer', 'member', 'viewer'];
+    const validRoles = MEMBER_ROLES;
     if (role) {
         if (!validRoles.includes(role)) throw new ApiError(400, 'invalid role filter');
         match.role = role;
