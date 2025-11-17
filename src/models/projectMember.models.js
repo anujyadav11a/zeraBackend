@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import { MEMBER_ROLES, ROLES } from '../constants/roles.js';
 
 const projectMemberSchema = new mongoose.Schema(
