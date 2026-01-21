@@ -129,9 +129,7 @@ export const createIssue = asyncHandler(async (req, res) => {
     res.status(201).json(
         new ApiResponse(201, issue, "Issue created successfully")
     );
-});
-
-
+})
 const DeleteIssue = asyncHandler(async (req, res) => {
     const deleteIssue = asyncHandler(async (req, res) => {
         const { issueId } = req.params;
@@ -192,7 +190,22 @@ const DeleteIssue = asyncHandler(async (req, res) => {
 
 })
 const GetIssue = asyncHandler(async (req, res) => {
+    const { issueId } = req.params;
 
+    const issue = await Issue.findOne({ _id: issueId, isDeleted: { $ne: true } })
+        .select(
+            "key title description status priority assignee reporter parent project createdAt updatedAt"
+        )
+        .populate('assignee', 'name email')
+        .populate('reporter', 'name email')
+        .populate('parent', 'key title')
+        .lean();
+    if (!issue) {
+        throw new ApiError(404, "Issue not found");
+    }
+    return res
+        .status(200)
+        .json(new ApiResponse(200, issue, "Issue fetched successfully"));
 })
 const UpdateIssue = asyncHandler(async (req, res) => {
 
