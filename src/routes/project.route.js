@@ -4,6 +4,7 @@ import { roleAuthorization } from "../middleware/roleAuthoriztion.middleware.js"
 import { validateProjectId } from "../middleware/validateProjectId.middleware.js";
 import { projectCreatorAuthorization } from "../middleware/projectCreatorAuthorization.middleware.js";
 import { projectMemberAuthorization } from "../middleware/projectMemberauth.middleware.js";
+import { projectLeaderAuthorization } from "../middleware/projectLeaderAuthorization.middleware.js";
 
 import {
     createProject,
@@ -12,8 +13,8 @@ import {
     removeMemberFromProject,
     getProjectDetails,
     changeMemberRole,
-} from "../controllers/project.controller.js"
-import { projectLeaderAuthorization } from "../middleware/projectLeaderAuthorization.middleware.js";
+} from "../controllers/project.controller.js";
+
 
 const Projectrouter= Router();
 

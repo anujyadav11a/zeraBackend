@@ -1,0 +1,218 @@
+import { asyncHandler } from "../utils/asyncHandler.js";
+import { ApiError } from "../utils/apierror.js";
+import { Project } from "../models/project.models.js";
+import { ProjectMember } from "../models/projectMember.models.js";
+import { User } from "../models/user.models.js";
+import { ROLES, MEMBER_ROLES } from "../constants/roles.js";
+import { ApiResponse } from "../utils/apiResponse.js";
+import mongoose from "mongoose";
+import { buildquery } from "../utils/quirybuilder.js";
+import { Issue } from "../../models/IsuueSchema/issue.models.js";
+
+
+export const createIssue = asyncHandler(async (req, res) => {
+    const { projectId } = req.params;
+
+    const {
+        title,
+        description,
+        type,
+        priority,
+        status,
+        assignee,
+        labels,
+        estimate,
+        dueDate,
+        parent
+    } = req.body;
+
+    // 🔹 Validate required fields
+    if (!title) {
+        return res.status(400).json({ message: "Title is required" });
+    }
+
+    // 🔹 Check project exists
+    const project = await Project.findById(projectId);
+    if (!project) {
+        return res.status(404).json({ message: "Project not found" });
+    }
+    // Estimate validation
+    if (estimate !== undefined) {
+        if (typeof estimate !== "number" || estimate < 0) {
+            return res.status(400).json({ message: "Estimate must be a non-negative number" });
+        }
+    }
+
+    // Due date validation
+    if (dueDate !== undefined) {
+        const due = new Date(dueDate);
+        if (isNaN(due.getTime())) {
+            return res.status(400).json({ message: "Invalid due date" });
+        }
+
+        if (due < new Date()) {
+            return res.status(400).json({ message: "Due date cannot be in the past" });
+        }
+    }
+
+
+
+
+    // 4️⃣ Parent validation (ONLY if parent is provided)
+    if (parent) {
+        const parentIssue = await Issue.findById(parent);
+
+        if (!parentIssue) {
+            return res.status(404).json({ message: "Parent issue not found" });
+        }
+
+        if (parentIssue.project.toString() !== projectId) {
+            return res.status(400).json({
+                message: "Parent issue must belong to the same project"
+            });
+        }
+
+        if (parentIssue.type === "subtask") {
+            return res.status(400).json({
+                message: "Subtask cannot be a parent issue"
+            });
+        }
+
+        if (type !== "subtask") {
+            return res.status(400).json({
+                message: "Only subtasks can have a parent"
+            });
+        }
+    }
+
+
+
+    // 🔹 Generate Issue Key (e.g. PROJ-12)
+    const issueCount = await Issue.countDocuments({ project: projectId });
+    const issueKey = `${project.key}-${issueCount + 1}`;
+
+    // 🔹 Create issue
+    const issue = await Issue.create({
+        project: projectId,
+        key: issueKey,
+        title,
+        description,
+        type,
+        priority,
+        priorityOrder,
+        status,
+        reporter: req.user._id,
+        assignee,
+        labels,
+        estimate,
+        dueDate,
+        parent,
+        history: [
+            {
+                by: req.user._id,
+                from: null,
+                to: "created",
+                note: "Issue created"
+            }
+        ]
+    });
+
+    const PRIORITY_MAP = {
+        urgent: 1,
+        high: 2,
+        medium: 3,
+        low: 4
+    };
+
+    issue.priorityOrder = PRIORITY_MAP[issue.priority];
+
+    res.status(201).json(
+        new ApiResponse(201, issue, "Issue created successfully")
+    );
+});
+
+
+const DeleteIssue = asyncHandler(async (req, res) => {
+
+})
+const GetIssue = asyncHandler(async (req, res) => {
+
+})
+const UpdateIssue = asyncHandler(async (req, res) => {
+
+})
+const ListIssues = asyncHandler(async (req, res) => {
+    const { projectId } = req.params;
+
+    // Validate projectId
+    if (!mongoose.Types.ObjectId.isValid(projectId)) {
+        throw new ApiError(400, 'Invalid projectId');
+    }
+
+    // Ensure project exists
+    const projectExist = await Project.findById(projectId).select('_id').lean();
+    if (!projectExist) {
+        throw new ApiError(404, 'Project not found');
+    }
+
+    // Extract query parameters
+    const { page = 1, limit = 10, sortBy = 'createdAt', sortOrder = 'desc', search, status, priority, assignee, type, labels } = req.query;
+
+    // Pagination
+    const { page: parsedPage, limit: parsedLimit, skip } = buildquery({ page, limit });
+
+    // Build filter
+    const filter = { project: projectId, isDeleted: { $ne: true } }; // Exclude deleted issues
+
+    if (status) filter.status = status;
+    if (priority) filter.priority = priority;
+    if (assignee) filter.assignee = assignee;
+    if (type) filter.type = type;
+    if (labels) filter.labels = { $in: Array.isArray(labels) ? labels : [labels] };
+    if (search) {
+        filter.$or = [
+            { title: { $regex: search, $options: 'i' } },
+            { description: { $regex: search, $options: 'i' } },
+            { key: { $regex: search, $options: 'i' } }
+        ];
+    }
+
+    // Sorting
+    const allowedSortFields = ['createdAt', 'updatedAt', 'priorityOrder', 'dueDate'];
+    const sortField = allowedSortFields.includes(sortBy) ? sortBy : 'createdAt';
+    const sortDirection = sortOrder === 'desc' ? -1 : 1;
+
+    // Fetch issues and count in parallel
+    const [issues, total] = await Promise.all([
+        Issue.find(filter)
+            .sort({ [sortField]: sortDirection })
+            .skip(skip)
+            .limit(parsedLimit)
+            .populate('assignee', 'name email')
+            .populate('reporter', 'name email')
+            .populate('parent', 'key title')
+            .lean(),
+        Issue.countDocuments(filter)
+    ]);
+
+    // Pagination meta
+    const totalPages = Math.ceil(total / parsedLimit);
+    const hasNextPage = parsedPage < totalPages;
+    const hasPrevPage = parsedPage > 1;
+
+    // Wrap response in ApiResponse utility
+    const apiResponse = new ApiResponse(200, {
+        data: issues,
+        pagination: {
+            currentPage: parsedPage,
+            totalPages,
+            totalIssues: total,
+            hasNextPage,
+            hasPrevPage,
+            limit: parsedLimit
+        }
+    }, "Issues fetched successfully");
+
+    res.status(apiResponse.statuscode).json(apiResponse);
+});
+

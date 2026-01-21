@@ -50,6 +50,11 @@ const IssueSchema = new Schema({
     enum: ["low","medium","high","urgent"], 
     default: "medium"
  },
+ priorityOrder: {
+  type: Number,
+  required: true,
+  index: true
+},
   status: {
      type: String,
       enum: ["todo","in_progress","in_review","done","closed"], 
@@ -62,7 +67,8 @@ const IssueSchema = new Schema({
     },
   assignee: {
      type: Schema.Types.ObjectId, 
-     ref: "User" 
+     ref: "User" ,
+     default:null
     },
   labels: [{
      type: String, 
