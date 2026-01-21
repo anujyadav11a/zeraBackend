@@ -133,6 +133,62 @@ export const createIssue = asyncHandler(async (req, res) => {
 
 
 const DeleteIssue = asyncHandler(async (req, res) => {
+    const deleteIssue = asyncHandler(async (req, res) => {
+        const { issueId } = req.params;
+
+        if (!mongoose.Types.ObjectId.isValid(issueId)) {
+            throw new ApiError(400, "Invalid issueId");
+        }
+
+        const session = await mongoose.startSession();
+        session.startTransaction();
+
+        try {
+            // 1️⃣ Soft delete main issue
+            const issue = await Issue.findOneAndUpdate(
+                { _id: issueId, isDeleted: false },
+                {
+                    isDeleted: true,
+                    deletedBy: req.user._id,
+                    deletedAt: new Date()
+                },
+                { new: true, session }
+            );
+
+            if (!issue) {
+                throw new ApiError(404, "Issue not found or already deleted");
+            }
+
+            // 2️⃣ Cascade delete subtasks
+            if (issue.type !== "subtask") {
+                await Issue.updateMany(
+                    {
+                        parent: issueId,
+                        type: "subtask",
+                        isDeleted: false
+                    },
+                    {
+                        isDeleted: true,
+                        deletedBy: req.user._id,
+                        deletedAt: new Date()
+                    },
+                    { session }
+                );
+            }
+
+            await session.commitTransaction();
+            session.endSession();
+
+            return res
+                .status(200)
+                .json(new ApiResponse(200, null, "Issue deleted successfully"));
+
+        } catch (error) {
+            await session.abortTransaction();
+            session.endSession();
+            throw error;
+        }
+    });
 
 })
 const GetIssue = asyncHandler(async (req, res) => {
