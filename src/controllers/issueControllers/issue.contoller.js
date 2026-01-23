@@ -382,3 +382,10 @@ const ListIssues = asyncHandler(async (req, res) => {
     res.status(apiResponse.statuscode).json(apiResponse);
 });
 
+export {
+    createIssue,
+    DeleteIssue,
+    GetIssue,
+    UpdateIssue,
+    ListIssues
+}

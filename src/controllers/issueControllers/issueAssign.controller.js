@@ -251,4 +251,102 @@ const reassignIssue = asyncHandler(async (req, res) => {
     }
 });
 
-export { assignIssueTOUser, reassignIssue };
+
+const unassignIssue = asyncHandler(async (req, res) => {
+    const { projectId, issueId } = req.params;
+    const { reason = "" } = req.body;
+    const requesterId = req.user._id;
+
+    // -------------------- Validations --------------------
+    if (!mongoose.Types.ObjectId.isValid(issueId)) {
+        throw new ApiError(400, "Invalid issueId format");
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(projectId)) {
+        throw new ApiError(400, "Invalid projectId format");
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(requesterId)) {
+        throw new ApiError(400, "Invalid user token");
+    }
+
+    if (reason && typeof reason !== "string") {
+        throw new ApiError(400, "Reason must be a string");
+    }
+
+    if (reason && reason.trim().length > 500) {
+        throw new ApiError(400, "Reason cannot exceed 500 characters");
+    }
+
+   
+    const issue = await Issue.findOne({
+        _id: issueId,
+        project: projectId,
+        isDeleted: { $ne: true }
+    }).select("assignee status");
+
+    if (!issue) {
+        throw new ApiError(404, "Issue not found in this project");
+    }
+
+    if (!issue.assignee) {
+        throw new ApiError(400, "Issue is already unassigned");
+    }
+
+    const lockedStatuses = ["closed", "done"];
+    if (lockedStatuses.includes(issue.status)) {
+        throw new ApiError(
+            409,
+            `Cannot unassign issue with status: ${issue.status}. Issue is locked.`
+        );
+    }
+
+   
+    let unassignQuery = Issue.findOneAndUpdate(
+        {
+            _id: issueId,
+            assignee: { $ne: null },
+            status: { $nin: lockedStatuses }
+        },
+        {
+            assignee: null,
+            $inc: { __v: 1 },
+            $push: {
+                history: {
+                    action: "UNASSIGN",
+                    field: "assignee",
+                    by: requesterId,
+                    from: issue.assignee,
+                    to: null,
+                    reason: reason.trim() || "No reason provided",
+                    at: new Date()
+                }
+            }
+        },
+       
+    );
+
+   
+
+    const updatedIssue = await unassignQuery;
+
+    if (!updatedIssue) {
+        throw new ApiError(
+            409,
+            
+            "Issue could not be unassigned (possibly already unassigned or locked)"
+        );
+    }
+
+    
+    return res.status(200).json(
+        new ApiResponse(
+            200,
+            reason,
+            "Issue unassigned successfully"
+        )
+    );
+});
+
+
+export { assignIssueTOUser, reassignIssue, unassignIssue };
