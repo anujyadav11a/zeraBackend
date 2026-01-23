@@ -154,7 +154,7 @@ const reassignIssue = asyncHandler(async (req, res) => {
         }
 
         // Check edge case: issue status is closed or archived
-        if (["closed", "archived"].includes(issue.status)) {
+        if (["closed", "done"].includes(issue.status)) {
             await session.abortTransaction();
             session.endSession();
             throw new ApiError(409, `Cannot reassign issue with status: ${issue.status}`);
