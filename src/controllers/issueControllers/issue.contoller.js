@@ -1,14 +1,14 @@
-import { asyncHandler } from "../utils/asyncHandler.js";
-import { ApiError } from "../utils/apierror.js";
-import { Project } from "../models/project.models.js";
-import { ApiResponse } from "../utils/apiResponse.js";
+import { asyncHandler } from "../../utils/asyncHandler.js";
+import { ApiError } from "../../utils/apierror.js";
+import { Project } from "../../models/project.models.js";
+import { ApiResponse } from "../../utils/apiResponse.js";
 import mongoose from "mongoose";
-import { buildquery } from "../utils/quirybuilder.js";
+import { buildquery } from "../../utils/quirybuilder.js";
 import { Issue } from "../../models/IsuueSchema/issue.models.js";
-import { buildPopulation, applyPopulation } from "../utils/populationBuilder.js";
+import { buildPopulation, applyPopulation } from "../../utils/populationBuilder.js";
 
 
-export const createIssue = asyncHandler(async (req, res) => {
+ const createIssue = asyncHandler(async (req, res) => {
     const { projectId } = req.params;
 
     const {

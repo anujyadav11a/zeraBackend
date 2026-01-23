@@ -14,9 +14,7 @@ import{
     ListIssues
 } from "../controllers/issueControllers/issue.contoller.js";
  
-import {
-    assignIssueTOUser, reassignIssue, unassignIssue
-} from "../controllers/issueControllers/issueAssignment.controller.js";
+
 
 const IssueRouter = Router();
 
@@ -25,3 +23,5 @@ IssueRouter.route("/get-Issue/:issueId").get(verifyToken,projectMemberAuthorizat
 IssueRouter.route("/update-Issue/:issueId").put(verifyToken,projectMemberAuthorization, validateProjectId, UpdateIssue);
 IssueRouter.route("/delete-Issue/:issueId").delete(verifyToken,projectLeaderAuthorization, validateProjectId, DeleteIssue);
 IssueRouter.route("/list-Issues/:projectId").get(verifyToken,projectMemberAuthorization, validateProjectId, ListIssues);
+
+export {IssueRouter}

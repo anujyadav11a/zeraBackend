@@ -1,8 +1,8 @@
 import mongoose from "mongoose";
 
-const CommentSchema = new Schema({
+const CommentSchema = new mongoose.Schema({
   author: {
-    type: Schema.Types.ObjectId,
+    type: mongoose.Schema.Types.ObjectId,
     ref: "User",
     required: true
   },
@@ -16,7 +16,7 @@ const CommentSchema = new Schema({
   }
 }, { _id: true });
 
-const IssueHistorySchema = new Schema(
+const IssueHistorySchema = new mongoose.Schema(
   {
     action: {
       type: String,
@@ -37,17 +37,17 @@ const IssueHistorySchema = new Schema(
     },
 
     from: {
-      type: Schema.Types.Mixed,
+      type: mongoose.Schema.Types.ObjectId,
       default: null
     },
 
     to: {
-      type: Schema.Types.Mixed,
+      type:mongoose.Schema.Types.ObjectId,
       default: null
     },
 
     by: {
-      type: Schema.Types.ObjectId,
+      type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true
     },
@@ -67,9 +67,9 @@ const IssueHistorySchema = new Schema(
 );
 
 
-const IssueSchema = new Schema({
+const IssueSchema = new mongoose.Schema({
   project: {
-    type: Schema.Types.ObjectId,
+    type: mongoose.Schema.Types.ObjectId,
     ref: "Project",
     required: true,
     index: true
@@ -110,12 +110,12 @@ const IssueSchema = new Schema({
     default: "todo"
   },
   reporter: {
-    type: Schema.Types.ObjectId,
+    type: mongoose.Schema.Types.ObjectId,
     ref: "User",
     required: true
   },
   assignee: {
-    type: Schema.Types.ObjectId,
+    type: mongoose.Schema.Types.ObjectId,
     ref: "User",
     default: null
   },
@@ -130,7 +130,7 @@ const IssueSchema = new Schema({
     type: Date
   },
   parent: {
-    type: Schema.Types.ObjectId,
+    type: mongoose.Schema.Types.ObjectId,
     ref: "Issue",
     index: true
   },
@@ -153,7 +153,7 @@ const IssueSchema = new Schema({
 
   },
   deletedBy: {
-    type: Schema.Types.ObjectId,
+    type: mongoose.Schema.Types.ObjectId,
     ref: "User",
     default: null
   },
@@ -184,3 +184,4 @@ IssueSchema.index({ project: 1, key: 1 }, { unique: true });
 
 export const Issue = mongoose.model("Issue", IssueSchema);
 export const Comment = mongoose.model("Comment", CommentSchema);
+export const IssueHistory = mongoose.model("IssueHistory", IssueHistorySchema);
