@@ -1,13 +1,11 @@
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/apierror.js";
 import { Project } from "../models/project.models.js";
-import { ProjectMember } from "../models/projectMember.models.js";
-import { User } from "../models/user.models.js";
-import { ROLES, MEMBER_ROLES } from "../constants/roles.js";
 import { ApiResponse } from "../utils/apiResponse.js";
 import mongoose from "mongoose";
 import { buildquery } from "../utils/quirybuilder.js";
 import { Issue } from "../../models/IsuueSchema/issue.models.js";
+import { buildPopulation, applyPopulation } from "../utils/populationBuilder.js";
 
 
 export const createIssue = asyncHandler(async (req, res) => {
@@ -192,24 +190,112 @@ const DeleteIssue = asyncHandler(async (req, res) => {
 const GetIssue = asyncHandler(async (req, res) => {
     const { issueId } = req.params;
 
-    const issue = await Issue.findOne({ _id: issueId, isDeleted: { $ne: true } })
-        .select(
-            "key title description status priority assignee reporter parent project createdAt updatedAt"
-        )
-        .populate('assignee', 'name email')
-        .populate('reporter', 'name email')
-        .populate('parent', 'key title')
-        .lean();
+    let query = Issue.findOne({ _id: issueId, isDeleted: { $ne: true } });
+
+    // Apply conditional population based on query params
+    const populateParam = req.query.populate;
+    if (populateParam) {
+        const populateArray = buildPopulation(populateParam);
+        query = applyPopulation(query, populateArray);
+    } else {
+        query = query.populate('assignee', 'name email')
+            .populate('reporter', 'name email')
+            .populate('parent', 'key title');
+    }
+
+    const issue = await query.lean();
+    
     if (!issue) {
         throw new ApiError(404, "Issue not found");
     }
+    
     return res
         .status(200)
         .json(new ApiResponse(200, issue, "Issue fetched successfully"));
 })
 const UpdateIssue = asyncHandler(async (req, res) => {
+    const { issueId } = req.params;
+    const userId = req.user._id;
 
-})
+    const allowedUpdates = [
+        "title",
+        "description",
+        "status",  
+        "priority",
+        "dueDate"
+    ];
+
+    // Start session for transaction
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+        const issue = await Issue.findOne({
+            _id: issueId,
+            isDeleted: { $ne: true }
+        }).session(session);
+
+        if (!issue) {
+            await session.abortTransaction();
+            session.endSession();
+            throw new ApiError(404, "Issue not found");
+        }
+
+        const updates = {};
+        const historyEntries = [];
+
+        allowedUpdates.forEach(field => {
+            if (
+                req.body[field] !== undefined &&
+                req.body[field] !== issue[field]
+            ) {
+                updates[field] = req.body[field];
+
+                historyEntries.push({
+                    action: field === "status" ? "STATUS_CHANGE" : field === "priority" ? "PRIORITY_CHANGE" : "UPDATE",
+                    field: field,
+                    by: userId,
+                    from: issue[field],
+                    to: req.body[field],
+                    at: new Date()
+                });
+            }
+        });
+
+        if (Object.keys(updates).length === 0) {
+            await session.abortTransaction();
+            session.endSession();
+            throw new ApiError(400, "No valid changes detected");
+        }
+
+        // Add version increment for optimistic locking
+        const updatedIssue = await Issue.findByIdAndUpdate(
+            issueId,
+            {
+                $set: updates,
+                $inc: { __v: 1 },
+                $push: { history: { $each: historyEntries } }
+            },
+            {
+                new: true,
+                runValidators: true,
+                session
+            }
+        );
+
+        await session.commitTransaction();
+        session.endSession();
+
+        res.status(200).json({
+            success: true,
+            data: updatedIssue
+        });
+    } catch (error) {
+        await session.abortTransaction();
+        session.endSession();
+        throw error;
+    }
+});
 const ListIssues = asyncHandler(async (req, res) => {
     const { projectId } = req.params;
 
@@ -252,15 +338,26 @@ const ListIssues = asyncHandler(async (req, res) => {
     const sortDirection = sortOrder === 'desc' ? -1 : 1;
 
     // Fetch issues and count in parallel
-    const [issues, total] = await Promise.all([
-        Issue.find(filter)
-            .sort({ [sortField]: sortDirection })
-            .skip(skip)
-            .limit(parsedLimit)
-            .populate('assignee', 'name email')
+    let issueQuery = Issue.find(filter)
+        .sort({ [sortField]: sortDirection })
+        .skip(skip)
+        .limit(parsedLimit);
+
+    // Apply conditional population based on query params
+    const populateParam = req.query.populate;
+    if (populateParam) {
+        const populateArray = buildPopulation(populateParam);
+        issueQuery = applyPopulation(issueQuery, populateArray);
+    } else {
+        issueQuery = issueQuery.populate('assignee', 'name email')
             .populate('reporter', 'name email')
-            .populate('parent', 'key title')
-            .lean(),
+            .populate('parent', 'key title');
+    }
+
+    issueQuery = issueQuery.lean();
+
+    const [issues, total] = await Promise.all([
+        issueQuery,
         Issue.countDocuments(filter)
     ]);
 

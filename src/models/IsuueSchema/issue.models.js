@@ -16,6 +16,55 @@ const CommentSchema = new Schema({
   }
 }, { _id: true });
 
+const IssueHistorySchema = new Schema(
+  {
+    action: {
+      type: String,
+      enum: [
+        "CREATE",
+        "REASSIGN",
+        "STATUS_CHANGE",
+        "PRIORITY_CHANGE",
+        "UPDATE",
+        "DELETE"
+      ],
+      required: true
+    },
+
+    field: {
+      type: String, // "assignee", "status", "priority"
+      required: true
+    },
+
+    from: {
+      type: Schema.Types.Mixed,
+      default: null
+    },
+
+    to: {
+      type: Schema.Types.Mixed,
+      default: null
+    },
+
+    by: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      required: true
+    },
+
+    reason: {
+      type: String,
+      default: ""
+    },
+
+    at: {
+      type: Date,
+      default: Date.now,
+      immutable: true
+    }
+  },
+  { _id: false }
+);
 
 
 const IssueSchema = new Schema({
@@ -87,16 +136,16 @@ const IssueSchema = new Schema({
   },
 
 
-  comments: [CommentSchema],
-  history: [
-    {
-      by: { type: Schema.Types.ObjectId, ref: "User" },
-      from: Schema.Types.Mixed,
-      to: Schema.Types.Mixed,
-      at: { type: Date, default: Date.now },
-      note: String
-    }
-  ],
+  comments: {
+    type: [CommentSchema],
+    default: []
+  },
+  history: {
+    type: [IssueHistorySchema],
+    default: []
+  },
+
+  
   isDeleted: {
     type: Boolean,
     default: false,
@@ -112,6 +161,10 @@ const IssueSchema = new Schema({
     type: Date,
     default: null
   },
+  __v: {
+    type: Number,
+    default: 0
+  }
 }, { timestamps: true });
 
 
