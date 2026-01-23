@@ -21,10 +21,10 @@ import cookieParser from 'cookie-parser';
 
  //Project-route
  import { Projectrouter } from './routes/project.route.js';
- app.use("/api/v1/Project",Projectrouter)
+ app.use("/api/v1/project",Projectrouter)
 
  // Issue-Route
- import { IssueRouter } from './routes/issue.route.js';
- app.use("/api/v1/Issue",IssueRouter)
+ import { issueRouter } from './routes/issue.route.js';
+ app.use("/api/v1/issue",issueRouter)
  export default app
 

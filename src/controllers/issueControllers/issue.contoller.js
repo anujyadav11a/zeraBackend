@@ -16,6 +16,7 @@ import { buildPopulation, applyPopulation } from "../../utils/populationBuilder.
         description,
         type,
         priority,
+       
         status,
         assignee,
         labels,
@@ -89,7 +90,16 @@ import { buildPopulation, applyPopulation } from "../../utils/populationBuilder.
     const issueCount = await Issue.countDocuments({ project: projectId });
     const issueKey = `${project.key}-${issueCount + 1}`;
 
-    // 🔹 Create issue
+    const PRIORITY_MAP = {
+        urgent: 1,
+        high: 2,
+        medium: 3,
+        low: 4
+    };
+
+    const computedPriorityOrder = PRIORITY_MAP[priority || 'medium'] || 3;
+
+    // 🔹 Create issue (create a properly formatted history entry)
     const issue = await Issue.create({
         project: projectId,
         key: issueKey,
@@ -97,7 +107,7 @@ import { buildPopulation, applyPopulation } from "../../utils/populationBuilder.
         description,
         type,
         priority,
-        priorityOrder,
+        priorityOrder: computedPriorityOrder,
         status,
         reporter: req.user._id,
         assignee,
@@ -107,86 +117,76 @@ import { buildPopulation, applyPopulation } from "../../utils/populationBuilder.
         parent,
         history: [
             {
-                by: req.user._id,
+                action: "CREATE",
+                field: "status",
                 from: null,
-                to: "created",
-                note: "Issue created"
+                to: null,
+                by: req.user._id,
+                reason: "Issue created"
             }
         ]
     });
-
-    const PRIORITY_MAP = {
-        urgent: 1,
-        high: 2,
-        medium: 3,
-        low: 4
-    };
-
-    issue.priorityOrder = PRIORITY_MAP[issue.priority];
 
     res.status(201).json(
         new ApiResponse(201, issue, "Issue created successfully")
     );
 })
 const DeleteIssue = asyncHandler(async (req, res) => {
-    const deleteIssue = asyncHandler(async (req, res) => {
-        const { issueId } = req.params;
+    const { issueId } = req.params;
 
-        if (!mongoose.Types.ObjectId.isValid(issueId)) {
-            throw new ApiError(400, "Invalid issueId");
+    if (!mongoose.Types.ObjectId.isValid(issueId)) {
+        throw new ApiError(400, "Invalid issueId");
+    }
+
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+        // 1️⃣ Soft delete main issue
+        const issue = await Issue.findOneAndUpdate(
+            { _id: issueId, isDeleted: false },
+            {
+                isDeleted: true,
+                deletedBy: req.user._id,
+                deletedAt: new Date()
+            },
+            { new: true, session }
+        );
+
+        if (!issue) {
+            throw new ApiError(404, "Issue not found or already deleted");
         }
 
-        const session = await mongoose.startSession();
-        session.startTransaction();
-
-        try {
-            // 1️⃣ Soft delete main issue
-            const issue = await Issue.findOneAndUpdate(
-                { _id: issueId, isDeleted: false },
+        // 2️⃣ Cascade delete subtasks
+        if (issue.type !== "subtask") {
+            await Issue.updateMany(
+                {
+                    parent: issueId,
+                    type: "subtask",
+                    isDeleted: false
+                },
                 {
                     isDeleted: true,
                     deletedBy: req.user._id,
                     deletedAt: new Date()
                 },
-                { new: true, session }
+                { session }
             );
-
-            if (!issue) {
-                throw new ApiError(404, "Issue not found or already deleted");
-            }
-
-            // 2️⃣ Cascade delete subtasks
-            if (issue.type !== "subtask") {
-                await Issue.updateMany(
-                    {
-                        parent: issueId,
-                        type: "subtask",
-                        isDeleted: false
-                    },
-                    {
-                        isDeleted: true,
-                        deletedBy: req.user._id,
-                        deletedAt: new Date()
-                    },
-                    { session }
-                );
-            }
-
-            await session.commitTransaction();
-            session.endSession();
-
-            return res
-                .status(200)
-                .json(new ApiResponse(200, null, "Issue deleted successfully"));
-
-        } catch (error) {
-            await session.abortTransaction();
-            session.endSession();
-            throw error;
         }
-    });
 
-})
+        await session.commitTransaction();
+        session.endSession();
+
+        return res
+            .status(200)
+            .json(new ApiResponse(200, null, "Issue deleted successfully"));
+
+    } catch (error) {
+        await session.abortTransaction();
+        session.endSession();
+        throw error;
+    }
+});
 const GetIssue = asyncHandler(async (req, res) => {
     const { issueId } = req.params;
 

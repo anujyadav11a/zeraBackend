@@ -16,12 +16,17 @@ import{
  
 
 
-const IssueRouter = Router();
+const issueRouter = Router();
 
-IssueRouter.route("/create-Issue").post(verifyToken,projectMemberAuthorization, createIssue);
-IssueRouter.route("/get-Issue/:issueId").get(verifyToken,projectMemberAuthorization, validateProjectId, GetIssue);
-IssueRouter.route("/update-Issue/:issueId").put(verifyToken,projectMemberAuthorization, validateProjectId, UpdateIssue);
-IssueRouter.route("/delete-Issue/:issueId").delete(verifyToken,projectLeaderAuthorization, validateProjectId, DeleteIssue);
-IssueRouter.route("/list-Issues/:projectId").get(verifyToken,projectMemberAuthorization, validateProjectId, ListIssues);
+// Create issue - requires projectId in URL for project context
 
-export {IssueRouter}
+
+// Get/Update/Delete issue - derives projectId from issueId
+issueRouter.route("/get-Issue/:issueId").get(verifyToken, projectMemberAuthorization, validateProjectId, GetIssue);
+issueRouter.route("/update-Issue/:issueId").put(verifyToken, projectMemberAuthorization, validateProjectId, UpdateIssue);
+issueRouter.route("/delete-Issue/:issueId").delete(verifyToken, projectLeaderAuthorization, validateProjectId, DeleteIssue);
+
+// List issues - requires projectId in URL
+issueRouter.route("/list-Issues/:projectId").get(verifyToken, projectMemberAuthorization, validateProjectId, ListIssues);
+
+export {issueRouter}

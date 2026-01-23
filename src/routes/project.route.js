@@ -5,7 +5,7 @@ import { validateProjectId } from "../middleware/validateProjectId.middleware.js
 import { projectCreatorAuthorization } from "../middleware/projectCreatorAuthorization.middleware.js";
 import { projectMemberAuthorization } from "../middleware/projectMemberauth.middleware.js";
 import { projectLeaderAuthorization } from "../middleware/projectLeaderAuthorization.middleware.js";
-
+import { createIssue } from "../controllers/issueControllers/issue.contoller.js";
 import {
     createProject,
     addMemberTOproject,
@@ -26,5 +26,5 @@ Projectrouter.route("/remove-Member").post(verifyToken, projectCreatorAuthorizat
 
 // change member role: only project leader (for that project) or global admin
 Projectrouter.route("/change-member-role/:memberId").post(verifyToken, projectLeaderAuthorization, changeMemberRole)
-
+Projectrouter.route("/:projectId/issues").post(verifyToken, projectMemberAuthorization, validateProjectId, createIssue);
 export {Projectrouter}
