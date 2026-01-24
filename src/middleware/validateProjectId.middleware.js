@@ -21,7 +21,7 @@ const validateProjectId = asyncHandler(async (req , res , next)=>{
   }
   
   req.project = project;
-  req.projectId = projectId;
+  
 
     next();
 })

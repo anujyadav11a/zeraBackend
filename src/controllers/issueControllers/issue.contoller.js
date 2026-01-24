@@ -123,6 +123,7 @@ import { buildPopulation, applyPopulation } from "../../utils/populationBuilder.
                 to: null,
                 by: req.user._id,
                 reason: "Issue created"
+                
             }
         ]
     });
