@@ -19,7 +19,7 @@ import{
 
 const issueRouter = Router();
 
-// Create issue - requires projectId in URL for project context
+
 
 
 // Get/Update/Delete issue - derives projectId from issueId
