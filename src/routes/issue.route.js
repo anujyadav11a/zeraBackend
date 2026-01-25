@@ -7,7 +7,7 @@ import { projectMemberAuthorization } from "../middleware/projectMemberauth.midd
 import { projectLeaderAuthorization } from "../middleware/projectLeaderAuthorization.middleware.js";
 
 import{
-     createIssue,
+     
     DeleteIssue,
     GetIssue,
     UpdateIssue,
@@ -22,7 +22,7 @@ const issueRouter = Router();
 
 
 // Get/Update/Delete issue - derives projectId from issueId
-issueRouter.route("/get-Issue/:issueId").get(verifyToken, projectMemberAuthorization, validateProjectId, GetIssue);
+issueRouter.route("/get-Issue/:issueId").get(verifyToken, GetIssue);
 issueRouter.route("/update-Issue/:issueId").put(verifyToken, projectMemberAuthorization, validateProjectId, UpdateIssue);
 issueRouter.route("/delete-Issue/:issueId").delete(verifyToken, projectLeaderAuthorization, validateProjectId, DeleteIssue);
 
