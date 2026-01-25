@@ -24,7 +24,7 @@ const issueExistAuthorization = asyncHandler(async (req, res, next) => {
     }
 
     // Add issue's project ID to request for next middleware
-    req.projectId = issue.project.id || issue.project;
+    req.projectId = issue.project;
     req.issue = issue;
 
     next();

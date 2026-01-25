@@ -23,7 +23,7 @@ const issueRouter = Router();
 
 
 // Get/Update/Delete issue - derives projectId from issueId
-issueRouter.route("/get-Issue/:issueId").get(verifyToken, GetIssue);
+issueRouter.route("/get-Issue/:issueId").get(verifyToken,issueExistAuthorization,projectMemberAuthorization, GetIssue);
 issueRouter.route("/update-Issue/:issueId").put(verifyToken, projectMemberAuthorization, validateProjectId, UpdateIssue);
 issueRouter.route("/delete-Issue/:issueId").delete(verifyToken, projectLeaderAuthorization, validateProjectId, DeleteIssue);
 
