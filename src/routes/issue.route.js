@@ -12,7 +12,7 @@ import{
     DeleteIssue,
     GetIssue,
     UpdateIssue,
-    ListIssues
+    
 } from "../controllers/issueControllers/issue.contoller.js";
  
 
@@ -24,10 +24,8 @@ const issueRouter = Router();
 
 // Get/Update/Delete issue - derives projectId from issueId
 issueRouter.route("/get-Issue/:issueId").get(verifyToken,issueExistAuthorization,projectMemberAuthorization, GetIssue);
-issueRouter.route("/update-Issue/:issueId").put(verifyToken, projectMemberAuthorization, validateProjectId, UpdateIssue);
-issueRouter.route("/delete-Issue/:issueId").delete(verifyToken, projectLeaderAuthorization, validateProjectId, DeleteIssue);
+issueRouter.route("/update-Issue/:issueId").put(verifyToken, issueExistAuthorization,authorizeIssueAccess, UpdateIssue);
+issueRouter.route("/delete-Issue/:issueId").delete(verifyToken, issueExistAuthorization,projectLeaderAuthorization, DeleteIssue);
 
-// List issues - requires projectId in URL
-issueRouter.route("/list-Issues/:projectId").get(verifyToken, projectMemberAuthorization, validateProjectId, ListIssues);
 
 export {issueRouter}

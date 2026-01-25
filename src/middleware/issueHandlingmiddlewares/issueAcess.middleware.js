@@ -18,7 +18,7 @@ import { asyncHandler } from "../../utils/asyncHandler.js";
         isDeleted: false
     })
         .select("assignee reporter project")
-        .lean();
+        ;
 
     if (!issue) {
         throw new ApiError(404, "Issue not found");
@@ -35,6 +35,7 @@ import { asyncHandler } from "../../utils/asyncHandler.js";
 
     // 4️⃣ Attach issue to request (avoid re-query)
     req.issue = issue;
+   
 
     next();
 });

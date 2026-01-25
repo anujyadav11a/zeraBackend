@@ -4,11 +4,11 @@ import { Project } from "../../models/project.models.js";
 import { ApiResponse } from "../../utils/apiResponse.js";
 import mongoose from "mongoose";
 import { buildquery } from "../../utils/quirybuilder.js";
-import { Issue } from "../../models/IsuueSchema/issue.models.js";
+import { Issue, IssueHistory, Comment } from "../../models/IsuueSchema/issue.models.js";
 import { buildPopulation, applyPopulation } from "../../utils/populationBuilder.js";
 
 
- const createIssue = asyncHandler(async (req, res) => {
+const createIssue = asyncHandler(async (req, res) => {
     const { projectId } = req.params;
 
     const {
@@ -16,7 +16,7 @@ import { buildPopulation, applyPopulation } from "../../utils/populationBuilder.
         description,
         type,
         priority,
-       
+
         status,
         assignee,
         labels,
@@ -115,22 +115,15 @@ import { buildPopulation, applyPopulation } from "../../utils/populationBuilder.
         estimate,
         dueDate,
         parent,
-        history: [
-            {
-                action: "CREATE",
-                field: "status",
-                from: null,
-                to: null,
-                by: req.user._id,
-                reason: "Issue created"
-                
-            }
-        ]
+       
     });
 
-    res.status(201).json(
-        new ApiResponse(201, issue, "Issue created successfully")
-    );
+   
+   
+
+res.status(201).json(
+    new ApiResponse(201, issue, "Issue created successfully")
+);
 })
 const DeleteIssue = asyncHandler(async (req, res) => {
     const { issueId } = req.params;
@@ -175,6 +168,13 @@ const DeleteIssue = asyncHandler(async (req, res) => {
             );
         }
 
+        await IssueHistory.insertMany([{
+            Issue: issueId,
+            action: "DELETE",
+            by: req.user._id,
+            at: new Date()
+        }], { session });
+
         await session.commitTransaction();
         session.endSession();
 
@@ -205,11 +205,11 @@ const GetIssue = asyncHandler(async (req, res) => {
     }
 
     const issue = await query.lean();
-    
+
     if (!issue) {
         throw new ApiError(404, "Issue not found");
     }
-    
+
     return res
         .status(200)
         .json(new ApiResponse(200, issue, "Issue fetched successfully"));
@@ -221,7 +221,7 @@ const UpdateIssue = asyncHandler(async (req, res) => {
     const allowedUpdates = [
         "title",
         "description",
-        "status",  
+        "status",
         "priority",
         "dueDate"
     ];
@@ -275,7 +275,7 @@ const UpdateIssue = asyncHandler(async (req, res) => {
             {
                 $set: updates,
                 $inc: { __v: 1 },
-                $push: { history: { $each: historyEntries } }
+               
             },
             {
                 new: true,
@@ -283,6 +283,10 @@ const UpdateIssue = asyncHandler(async (req, res) => {
                 session
             }
         );
+        await IssueHistory.insertMany(historyEntries.map(entry => ({
+            Issue: issueId,
+            ...entry
+        })), { session });  
 
         await session.commitTransaction();
         session.endSession();
@@ -305,11 +309,7 @@ const ListIssues = asyncHandler(async (req, res) => {
         throw new ApiError(400, 'Invalid projectId');
     }
 
-    // Ensure project exists
-    const projectExist = await Project.findById(projectId).select('_id').lean();
-    if (!projectExist) {
-        throw new ApiError(404, 'Project not found');
-    }
+    
 
     // Extract query parameters
     const { page = 1, limit = 10, sortBy = 'createdAt', sortOrder = 'desc', search, status, priority, assignee, type, labels } = req.query;

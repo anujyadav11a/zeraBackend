@@ -18,6 +18,11 @@ const CommentSchema = new mongoose.Schema({
 
 const IssueHistorySchema = new mongoose.Schema(
   {
+    Issue:{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Issue",
+      required: true
+    },
     action: {
       type: String,
       enum: [
@@ -32,17 +37,17 @@ const IssueHistorySchema = new mongoose.Schema(
     },
 
     field: {
-      type: String, // "assignee", "status", "priority"
+      type: String, // "assignee", "status", "priority","description","title"
       required: true
     },
 
     from: {
-      type: mongoose.Schema.Types.ObjectId,
+      type: mongoose.Schema.Types.Mixed,
       default: null
     },
 
     to: {
-      type:mongoose.Schema.Types.ObjectId,
+      type: mongoose.Schema.Types.Mixed,
       default: null
     },
 
@@ -140,10 +145,7 @@ const IssueSchema = new mongoose.Schema({
     type: [CommentSchema],
     default: []
   },
-  history: {
-    type: [IssueHistorySchema],
-    default: []
-  },
+ 
 
   
   isDeleted: {
