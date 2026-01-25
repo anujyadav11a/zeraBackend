@@ -5,7 +5,8 @@ import { validateProjectId } from "../middleware/validateProjectId.middleware.js
 import { projectCreatorAuthorization } from "../middleware/projectCreatorAuthorization.middleware.js";
 import { projectMemberAuthorization } from "../middleware/projectMemberauth.middleware.js";
 import { projectLeaderAuthorization } from "../middleware/projectLeaderAuthorization.middleware.js";
-
+import { issueExistAuthorization } from "../middleware/issueHandlingmiddlewares/issueExistAuthorization.middleware.js";
+import { authorizeIssueAccess } from "../middleware/issueHandlingmiddlewares/issueAcess.middleware.js";
 import{
      
     DeleteIssue,

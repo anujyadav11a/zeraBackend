@@ -1,8 +1,9 @@
 import mongoose from "mongoose";
-import { Issue } from "../models/issue.model.js";
-import { ApiError } from "../utils/ApiError.js";
+import { Issue } from "../../models/IsuueSchema/issue.models.js";
+import { ApiError } from "../../utils/apierror.js";
+import { asyncHandler } from "../../utils/asyncHandler.js";
 
- const authorizeIssueAccess = async (req, res, next) => {
+ const authorizeIssueAccess = asyncHandler(async (req, res, next) => {
     const { issueId } = req.params;
     const userId = req.user._id;
 
@@ -36,5 +37,5 @@ import { ApiError } from "../utils/ApiError.js";
     req.issue = issue;
 
     next();
-};
+});
 export { authorizeIssueAccess };
