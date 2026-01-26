@@ -5,7 +5,7 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-     "start": "node .",
+    "start": "node .",
     "dev": "nodemon -r dotenv/config --experimental-json-modules src/index.js",
     "roles:check": "node ./scripts/check_and_migrate_roles.js",
     "roles:migrate": "node ./scripts/check_and_migrate_roles.js --migrate"
@@ -28,6 +28,7 @@
     "express": "^5.1.0",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^7.8.7",
-    "multer": "^2.0.2"
+    "multer": "^2.0.2",
+    "nodemailer": "^7.0.12"
   }
 }
