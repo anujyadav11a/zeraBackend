@@ -1,5 +1,7 @@
 import { transporter } from "../../utils/mailer";
 
+
+
 export const sendEmail = async (to, subject, html) => {
     try {
         const info = await transporter.sendMail({
@@ -13,5 +15,6 @@ export const sendEmail = async (to, subject, html) => {
         console.error("Error sending email:", error);
     }
 }
+
 
         
