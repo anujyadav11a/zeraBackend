@@ -84,17 +84,13 @@ const assignIssueTOUser = asyncHandler(async (req, res) => {
         session.endSession();
 
         // Send notification to assignee
-        try {
+        
             await notifyAssignee(
                 { email: updatedIssue.assignee.email, name: updatedIssue.assignee.name },
                 { title: updatedIssue.title, description: updatedIssue.description, status: updatedIssue.status, priority: updatedIssue.priority },
                 { name: updatedIssue.project?.name || 'Unknown Project' }
             );
-        } catch (notificationError) {
-            console.error("Failed to send notification email:", notificationError);
-            // Don't fail the request if notification fails
-        }
-
+        
         return res
             .status(200)
             .json(new ApiResponse(200, updatedIssue, "Issue assigned successfully"));
