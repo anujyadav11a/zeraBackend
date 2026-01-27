@@ -8,6 +8,7 @@ import { Issue } from "../../models/IsuueSchema/issue.models.js";
 import { ProjectMember } from "../../models/projectMember.models.js";
 import { User } from "../../models/user.models.js";
 import { buildPopulation, applyPopulation } from "../utils/populationBuilder.js";
+import { notifyAssignee } from "../Email/email.contrller.js";
 
 const assignIssueTOUser = asyncHandler(async (req, res) => {
     const { issueId } = req.params;
@@ -81,6 +82,18 @@ const assignIssueTOUser = asyncHandler(async (req, res) => {
 
         await session.commitTransaction();
         session.endSession();
+
+        // Send notification to assignee
+        try {
+            await notifyAssignee(
+                { email: updatedIssue.assignee.email, name: updatedIssue.assignee.name },
+                { title: updatedIssue.title, description: updatedIssue.description, status: updatedIssue.status, priority: updatedIssue.priority },
+                { name: updatedIssue.project?.name || 'Unknown Project' }
+            );
+        } catch (notificationError) {
+            console.error("Failed to send notification email:", notificationError);
+            // Don't fail the request if notification fails
+        }
 
         return res
             .status(200)
@@ -240,6 +253,18 @@ const reassignIssue = asyncHandler(async (req, res) => {
 
         await session.commitTransaction();
         session.endSession();
+
+        // Send notification to new assignee
+        try {
+            await notifyAssignee(
+                { email: updatedIssue.assignee.email, name: updatedIssue.assignee.name },
+                { title: updatedIssue.title, description: updatedIssue.description, status: updatedIssue.status, priority: updatedIssue.priority },
+                { name: updatedIssue.project?.name || 'Unknown Project' }
+            );
+        } catch (notificationError) {
+            console.error("Failed to send notification email:", notificationError);
+            // Don't fail the request if notification fails
+        }
 
         return res
             .status(200)

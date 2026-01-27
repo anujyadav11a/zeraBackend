@@ -44,7 +44,7 @@ const createDefaultadmin = async () => {
 }
 
 const userRegister = asyncHandler(async (req, res) => {
-    const { username, name, email, password } = req.body
+    const {  name, email, password } = req.body
 
     if ([username, name, email, password].some((field) => field?.trim() === "")) {
         throw new ApiError(400, "all fields are required")
@@ -58,7 +58,7 @@ const userRegister = asyncHandler(async (req, res) => {
     }
 
     const user = await User.create({
-        username,
+        
         name,
         email,
         password
