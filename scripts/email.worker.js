@@ -1,5 +1,5 @@
-import { emailQueue } from "./email.queue";
-import { sendEmail } from "./email.service";    
+import { emailQueue } from "../src/controllers/Email/email.queue";
+import { sendEmail } from "../src/controllers/Email/email.service";    
 
 emailQueue.process(10, async (job) => { 
     const { to, subject, html } = job.data;

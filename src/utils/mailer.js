@@ -1,5 +1,5 @@
 import nodemailer from 'nodemailer';
-import { configDotenv } from 'dotenv';
+
 
 const transporter = nodemailer.createTransport({
   host: 'smtp.example.com',
