@@ -1,5 +1,5 @@
 import Queue from 'bull';
-import Redis from 'ioredis';
+import Redis from 'ioredis';// for connecting to Redis server
  
 const redis = new Redis({
     host: process.env.REDIS_HOST,
