@@ -10,15 +10,16 @@ const sendEmails = asyncHandler(async (req, res, next) => {
           return next(new ApiError(400, "Missing required fields: to, subject, html"));
      }
      try {
-          emailQueue.add(
+        await emailQueue.add(
                { to, subject, html }, 
                {
                attempts: 5,
                backoff: {
                     type: 'exponential',
-                    delay: 60000
+                    delay: 2000
                },
                removeOnComplete: true,
+               removeOnFail: 50
                
           }
 
