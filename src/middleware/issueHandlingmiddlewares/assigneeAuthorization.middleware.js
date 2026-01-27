@@ -4,28 +4,33 @@ import { asyncHandler } from "../../utils/asyncHandler.js";
 import { ProjectMember } from "../../models/projectMember.models.js";
 
 const assigneeAuthorization = asyncHandler(async (req, res, next) => {  
-    const { projectId } = req.params;
-    const { assignee } = req.body;
+    const projectId = req.projectId; // Get from issueExistAuthorization middleware
+    const { newAssigneeId } = req.body;
 
-    // 1️⃣ Validate projectId format
+    // 1️⃣ Validate projectId exists
+    if (!projectId) {
+        throw new ApiError(400, "Project ID not found in request");
+    }
+
+    // 2️⃣ Validate projectId format
     if (!mongoose.Types.ObjectId.isValid(projectId)) {
         throw new ApiError(400, "Invalid projectId");
     }
 
-    // 2️⃣ Validate assignee is provided
-    if (!assignee) {
+    // 3️⃣ Validate assignee is provided
+    if (!newAssigneeId) {
         throw new ApiError(400, "Assignee is required");
     }
 
-    // 3️⃣ Validate assignee format
-    if (!mongoose.Types.ObjectId.isValid(assignee)) {
+    // 4️⃣ Validate assignee format
+    if (!mongoose.Types.ObjectId.isValid(newAssigneeId)) {
         throw new ApiError(400, "Invalid assignee ID");
     }
 
-    // 4️⃣ Check if assignee is a member of the project and is active
+    // 5️⃣ Check if assignee is a member of the project and is active
     const assigneeData = await ProjectMember.findOne({
         project: projectId,
-        user: assignee,
+        user: newAssigneeId,
         isActive: true
     });
 
@@ -36,10 +41,8 @@ const assigneeAuthorization = asyncHandler(async (req, res, next) => {
         );
     }
 
-    // 5️⃣ Store assignee data in request for later use
+    // 6️⃣ Store assignee data in request for later use
     req.assigneeData = assigneeData;
-    req.projectId = issue.project;
-
 
     next();
 });

@@ -7,6 +7,7 @@ import { projectMemberAuthorization } from "../middleware/projectMemberauth.midd
 import { projectLeaderAuthorization } from "../middleware/projectLeaderAuthorization.middleware.js";
 import { issueExistAuthorization } from "../middleware/issueHandlingmiddlewares/issueExistAuthorization.middleware.js";
 import { authorizeIssueAccess } from "../middleware/issueHandlingmiddlewares/issueAcess.middleware.js";
+import {assigneeAuthorization} from "../middleware/issueHandlingmiddlewares/assigneeAuthorization.middleware.js";
 import{
      
     DeleteIssue,
@@ -30,8 +31,8 @@ const issueRouter = Router();
 issueRouter.route("/get-Issue/:issueId").get(verifyToken,issueExistAuthorization,projectMemberAuthorization, GetIssue);
 issueRouter.route("/update-Issue/:issueId").put(verifyToken, issueExistAuthorization,authorizeIssueAccess, UpdateIssue);
 issueRouter.route("/delete-Issue/:issueId").delete(verifyToken, issueExistAuthorization,projectLeaderAuthorization, DeleteIssue);
-issueRouter.route("/assign-issue/:issueId").post(verifyToken, issueExistAuthorization, projectLeaderAuthorization, assignIssueTOUser);
-issueRouter.route("/reassign-issue/:issueId").post(verifyToken, issueExistAuthorization, projectLeaderAuthorization, reassignIssue);
+issueRouter.route("/assign-issue/:issueId").post(verifyToken, issueExistAuthorization, assigneeAuthorization, projectLeaderAuthorization, assignIssueTOUser);
+issueRouter.route("/reassign-issue/:issueId").post(verifyToken, issueExistAuthorization, assigneeAuthorization, projectLeaderAuthorization, reassignIssue);
 issueRouter.route("/unassign-issue/:issueId").post(verifyToken, issueExistAuthorization, projectLeaderAuthorization, unassignIssue);
 
 export {issueRouter}

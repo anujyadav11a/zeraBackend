@@ -10,7 +10,8 @@ import { notifyAssignee } from "../Email/email.contrller.js";
 import { IssueHistory } from "../../models/IsuueSchema/issue.models.js";
 
 const assignIssueTOUser = asyncHandler(async (req, res) => {
-    const { projectId, issueId } = req.params;
+    const projectId = req.projectId; // From issueExistAuthorization middleware
+    const { issueId } = req.params;
     const { assignee } = req.body;
     const userId = req.user._id;
 
@@ -90,30 +91,43 @@ const assignIssueTOUser = asyncHandler(async (req, res) => {
             { session }
         );
 
-        await notifyAssignee(
-            { email: updatedIssue.assignee.email, name: updatedIssue.assignee.name },
-            { _id: updatedIssue._id, title: updatedIssue.title, description: updatedIssue.description, status: updatedIssue.status, priority: updatedIssue.priority },
-            { name: updatedIssue.project?.name || 'Unknown Project' }
-        );
+        // Commit transaction before sending notification
         await session.commitTransaction();
         session.endSession();
 
-
+        // Send notification to assignee (AFTER transaction is committed)
+        try {
+            await notifyAssignee(
+                { email: updatedIssue.assignee.email, name: updatedIssue.assignee.name },
+                { _id: updatedIssue._id, title: updatedIssue.title, description: updatedIssue.description, status: updatedIssue.status, priority: updatedIssue.priority },
+                { name: updatedIssue.project?.name || 'Unknown Project' }
+            );
+        } catch (notificationError) {
+            console.error("Failed to send notification email:", notificationError);
+            // Don't fail the request if notification fails
+        }
 
         return res
             .status(200)
             .json(new ApiResponse(200, updatedIssue, "Issue assigned successfully"));
     } catch (error) {
-        await session.abortTransaction();
+        // Only abort if transaction is still active
+        try {
+            await session.abortTransaction();
+        } catch (abortError) {
+            console.error("Error aborting transaction:", abortError.message);
+        }
         session.endSession();
         throw error;
     }
 });
 
 const reassignIssue = asyncHandler(async (req, res) => {
-    const { projectId, issueId } = req.params;
+    const projectId = req.projectId; // From issueExistAuthorization middleware
+    const { issueId } = req.params;
     const { newAssigneeId, reason = "" } = req.body;
     const requesterId = req.user._id;
+    console.log("projectId:", projectId, "issueId:", issueId, "newAssigneeId:", newAssigneeId);
 
     // Validate input parameters
     if (!mongoose.Types.ObjectId.isValid(issueId)) {
@@ -141,11 +155,6 @@ const reassignIssue = asyncHandler(async (req, res) => {
             session.endSession();
             throw new ApiError(404, "Issue not found in this project");
         }
-
-       
-
-       
-
 
         // Check edge case: issue status is closed or archived
         if (["closed", "done"].includes(issue.status)) {
@@ -230,10 +239,11 @@ const reassignIssue = asyncHandler(async (req, res) => {
                 { session }
             );
 
+        // Commit transaction before sending notification
         await session.commitTransaction();
         session.endSession();
 
-        // Send notification to new assignee
+        // Send notification to new assignee (AFTER transaction is committed)
         try {
             await notifyAssignee(
                 { email: updatedIssue.assignee.email, name: updatedIssue.assignee.name },
@@ -249,7 +259,12 @@ const reassignIssue = asyncHandler(async (req, res) => {
             .status(200)
             .json(new ApiResponse(200, updatedIssue, "Issue reassigned successfully"));
     } catch (error) {
-        await session.abortTransaction();
+        // Only abort if transaction is still active
+        try {
+            await session.abortTransaction();
+        } catch (abortError) {
+            console.error("Error aborting transaction:", abortError.message);
+        }
         session.endSession();
         throw error;
     }
@@ -257,7 +272,8 @@ const reassignIssue = asyncHandler(async (req, res) => {
 
 
 const unassignIssue = asyncHandler(async (req, res) => {
-    const { projectId, issueId } = req.params;
+    const projectId = req.projectId; // From issueExistAuthorization middleware
+    const { issueId } = req.params;
     const { reason = "" } = req.body;
     const requesterId = req.user._id;
 
@@ -266,7 +282,7 @@ const unassignIssue = asyncHandler(async (req, res) => {
         throw new ApiError(400, "Invalid issueId format");
     }
 
-    if (!mongoose.Types.ObjectId.isValid(projectId)) {
+    if (!projectId || !mongoose.Types.ObjectId.isValid(projectId)) {
         throw new ApiError(400, "Invalid projectId format");
     }
 
