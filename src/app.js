@@ -5,6 +5,9 @@ import cookieParser from 'cookie-parser';
 
  const app = express();
 
+ // Start email worker
+ import "./controllers/Email/email.worker.js";
+
  app.use(cors({
     origin: process.env.CORS_ORIGIN,
     Credential:true

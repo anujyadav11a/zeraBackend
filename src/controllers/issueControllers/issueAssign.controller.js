@@ -1,9 +1,7 @@
 import { asyncHandler } from "../../utils/asyncHandler.js";
 import { ApiError } from "../../utils/apierror.js";
-
 import { ApiResponse } from "../../utils/apiResponse.js";
 import mongoose from "mongoose";
-
 import { Issue } from "../../models/IsuueSchema/issue.models.js";
 import { ProjectMember } from "../../models/projectMember.models.js";
 import { User } from "../../models/user.models.js";
@@ -83,7 +81,7 @@ const assignIssueTOUser = asyncHandler(async (req, res) => {
         
             await notifyAssignee(
                 { email: updatedIssue.assignee.email, name: updatedIssue.assignee.name },
-                { title: updatedIssue.title, description: updatedIssue.description, status: updatedIssue.status, priority: updatedIssue.priority },
+                { _id: updatedIssue._id, title: updatedIssue.title, description: updatedIssue.description, status: updatedIssue.status, priority: updatedIssue.priority },
                 { name: updatedIssue.project?.name || 'Unknown Project' }
             );
         await session.commitTransaction();
@@ -254,7 +252,7 @@ const reassignIssue = asyncHandler(async (req, res) => {
         try {
             await notifyAssignee(
                 { email: updatedIssue.assignee.email, name: updatedIssue.assignee.name },
-                { title: updatedIssue.title, description: updatedIssue.description, status: updatedIssue.status, priority: updatedIssue.priority },
+                { _id: updatedIssue._id, title: updatedIssue.title, description: updatedIssue.description, status: updatedIssue.status, priority: updatedIssue.priority },
                 { name: updatedIssue.project?.name || 'Unknown Project' }
             );
         } catch (notificationError) {
