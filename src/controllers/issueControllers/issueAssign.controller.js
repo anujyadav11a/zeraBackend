@@ -7,9 +7,10 @@ import { ProjectMember } from "../../models/projectMember.models.js";
 import { User } from "../../models/user.models.js";
 import { buildPopulation, applyPopulation } from "../../utils/populationBuilder.js";
 import { notifyAssignee } from "../Email/email.contrller.js";
+import { IssueHistory } from "../../models/IsuueSchema/issue.models.js";
 
 const assignIssueTOUser = asyncHandler(async (req, res) => {
-    const { issueId } = req.params;
+    const { projectId, issueId } = req.params;
     const { assignee } = req.body;
     const userId = req.user._id;
 
@@ -29,6 +30,7 @@ const assignIssueTOUser = asyncHandler(async (req, res) => {
         // Fetch issue with lock (read with consistency)
         const issue = await Issue.findOne({
             _id: issueId,
+            project: projectId,
             isDeleted: { $ne: true }
         }).session(session);
 
@@ -53,16 +55,7 @@ const assignIssueTOUser = asyncHandler(async (req, res) => {
             {
                 assignee,
                 $inc: { __v: 1 },
-                $push: {
-                    history: {
-                        action: "REASSIGN",
-                        field: "assignee",
-                        by: userId,
-                        from: previousAssignee,
-                        to: assignee,
-                        at: new Date()
-                    }
-                }
+
             },
             { new: true, session }
         );
@@ -77,18 +70,36 @@ const assignIssueTOUser = asyncHandler(async (req, res) => {
         }
 
         const updatedIssue = await updateQuery;
- // Send notification to assignee
-        
-            await notifyAssignee(
-                { email: updatedIssue.assignee.email, name: updatedIssue.assignee.name },
-                { _id: updatedIssue._id, title: updatedIssue.title, description: updatedIssue.description, status: updatedIssue.status, priority: updatedIssue.priority },
-                { name: updatedIssue.project?.name || 'Unknown Project' }
-            );
+
+        const historyEntries = []
+
+        historyEntries.push({
+            action: "ASSIGN",
+            field: "assignee",
+            by: userId,
+            from: previousAssignee,
+            to: assignee,
+            at: new Date()
+        });
+
+        await IssueHistory.insertMany(historyEntries.map(entry => ({
+
+            issue: issueId,
+            ...entry
+        })),
+            { session }
+        );
+
+        await notifyAssignee(
+            { email: updatedIssue.assignee.email, name: updatedIssue.assignee.name },
+            { _id: updatedIssue._id, title: updatedIssue.title, description: updatedIssue.description, status: updatedIssue.status, priority: updatedIssue.priority },
+            { name: updatedIssue.project?.name || 'Unknown Project' }
+        );
         await session.commitTransaction();
         session.endSession();
 
-       
-        
+
+
         return res
             .status(200)
             .json(new ApiResponse(200, updatedIssue, "Issue assigned successfully"));
@@ -131,34 +142,10 @@ const reassignIssue = asyncHandler(async (req, res) => {
             throw new ApiError(404, "Issue not found in this project");
         }
 
-        // Validate new assignee exists
-        const newAssignee = await User.findOne({
-            _id: newAssigneeId,
-            isDeleted: { $ne: true }
-        }).session(session);
+       
 
-        if (!newAssignee) {
-            await session.abortTransaction();
-            session.endSession();
-            throw new ApiError(400, "New assignee user not found");
-        }
+       
 
-        // Validate new assignee is an active project member
-        const isProjectMember = await ProjectMember.findOne({
-            project: projectId,
-            user: newAssigneeId,
-            isActive: true,
-            $or: [
-                { removedAt: { $exists: false } },
-                { removedAt: null }
-            ]
-        }).session(session);
-
-        if (!isProjectMember) {
-            await session.abortTransaction();
-            session.endSession();
-            throw new ApiError(400, "New assignee is not an active member of this project");
-        }
 
         // Check edge case: issue status is closed or archived
         if (["closed", "done"].includes(issue.status)) {
@@ -176,17 +163,7 @@ const reassignIssue = asyncHandler(async (req, res) => {
                 issueId,
                 {
                     $inc: { __v: 1 },
-                    $push: {
-                        history: {
-                            action: "REASSIGN",
-                            field: "assignee",
-                            by: requesterId,
-                            from: oldAssigneeId,
-                            to: newAssigneeId,
-                            reason,
-                            at: new Date()
-                        }
-                    }
+
                 },
                 { new: true, session }
             );
@@ -202,7 +179,7 @@ const reassignIssue = asyncHandler(async (req, res) => {
             }
 
             const updatedIssue = await selfReassignQuery;
-
+            
             await session.commitTransaction();
             session.endSession();
 
@@ -217,17 +194,7 @@ const reassignIssue = asyncHandler(async (req, res) => {
             {
                 assignee: newAssigneeId,
                 $inc: { __v: 1 },
-                $push: {
-                    history: {
-                        action: "REASSIGN",
-                        field: "assignee",
-                        by: requesterId,
-                        from: oldAssigneeId,
-                        to: newAssigneeId,
-                        reason,
-                        at: new Date()
-                    }
-                }
+              
             },
             { new: true, session }
         );
@@ -244,6 +211,24 @@ const reassignIssue = asyncHandler(async (req, res) => {
         }
 
         const updatedIssue = await reassignQuery;
+        const historyEntries = []
+
+            historyEntries.push({
+                action: "REASSIGN",
+                field: "assignee",
+                by: requesterId,
+                from: oldAssigneeId,
+                to: newAssigneeId,
+                at: new Date()
+            });
+
+            await IssueHistory.insertMany(historyEntries.map(entry => ({
+
+                issue: issueId,
+                ...entry
+            })),
+                { session }
+            );
 
         await session.commitTransaction();
         session.endSession();
@@ -252,7 +237,7 @@ const reassignIssue = asyncHandler(async (req, res) => {
         try {
             await notifyAssignee(
                 { email: updatedIssue.assignee.email, name: updatedIssue.assignee.name },
-                { _id: updatedIssue._id, title: updatedIssue.title, description: updatedIssue.description, status: updatedIssue.status, priority: updatedIssue.priority },
+                { _id: updatedIssue._id, title: updatedIssue.title, description: updatedIssue.description, status: updatedIssue.status, priority: updatedIssue.priority, reason: reason },
                 { name: updatedIssue.project?.name || 'Unknown Project' }
             );
         } catch (notificationError) {
@@ -297,7 +282,7 @@ const unassignIssue = asyncHandler(async (req, res) => {
         throw new ApiError(400, "Reason cannot exceed 500 characters");
     }
 
-   
+
     const issue = await Issue.findOne({
         _id: issueId,
         project: projectId,
@@ -320,7 +305,7 @@ const unassignIssue = asyncHandler(async (req, res) => {
         );
     }
 
-   
+
     let unassignQuery = Issue.findOneAndUpdate(
         {
             _id: issueId,
@@ -330,34 +315,37 @@ const unassignIssue = asyncHandler(async (req, res) => {
         {
             assignee: null,
             $inc: { __v: 1 },
-            $push: {
-                history: {
-                    action: "UNASSIGN",
-                    field: "assignee",
-                    by: requesterId,
-                    from: issue.assignee,
-                    to: null,
-                    reason: reason.trim() || "No reason provided",
-                    at: new Date()
-                }
-            }
+           
         },
-       
+        { new: true }
     );
+         
 
-   
 
     const updatedIssue = await unassignQuery;
 
     if (!updatedIssue) {
         throw new ApiError(
             409,
-            
             "Issue could not be unassigned (possibly already unassigned or locked)"
         );
     }
 
+    // Send notification to old assignee about unassignment
     
+        const oldAssignee = issue.assignee;
+        const oldAssigneeData = await User.findById(oldAssignee).select("email name");
+        
+        if (oldAssigneeData) {
+            await notifyAssignee(
+                { email: oldAssigneeData.email, name: oldAssigneeData.name },
+                { _id: updatedIssue._id, title: updatedIssue.title, description: updatedIssue.description, status: updatedIssue.status, priority: updatedIssue.priority, reason: reason },
+                { name: updatedIssue.project?.name || 'Unknown Project' }
+            );
+        }
+   
+
+
     return res.status(200).json(
         new ApiResponse(
             200,
