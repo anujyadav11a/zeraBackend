@@ -158,14 +158,17 @@ const addMemberTOproject = asyncHandler(async (req, res) => {
     if (!addMember) {
         throw new ApiError(500, "failed to add member to project")
     }
-    if (addMember) {
-
+    
+    // Populate user data for notification
+    const memberWithUserData = await ProjectMember.findById(addMember._id).populate('user');
+    if (memberWithUserData && memberWithUserData.user) {
         await notifyuserOnprojectAssignment(
-            { email: addMember.email, name: addMember.name },
-            { name: projectExist.name, status: projectExist.status, description: projectExist.description, priority: projectExist.priority }
+            { email: memberWithUserData.user.email, name: memberWithUserData.user.name, _id: memberWithUserData.user._id },
+            { name: projectExist.name, status: projectExist.status, description: projectExist.description, priority: projectExist.priority, _id: projectExist._id }
         )
-
     }
+
+    
     return res.status(200)
         .json(
             new ApiResponse(
@@ -341,16 +344,24 @@ const removeMemberFromProject = asyncHandler(async (req, res) => {
         throw new ApiError(500, "failed to update project member count");
     }
     if (deleteResult) {
-        await notifyMemeberOnProjectRemoval(
-            { email: removeMember.email, name: removeMember.name },
-            {
-                name: removeMember.project.name,
-                status: removeMember.project.status,
-                description: removeMember.project.description,
-                priority: removeMember.project.priority
+        // Populate user and project data for notification
+        const memberWithData = await ProjectMember.findOne({ _id: removeMember._id }).populate('user').populate('project');
+        if (!memberWithData) {
+            // If already deleted, fetch user and project separately
+            const user = await User.findById(removeMember.user);
+            const project = await Project.findById(removeMember.project);
+            if (user && project) {
+                await notifyMemeberOnProjectRemoval(
+                    { email: user.email, name: user.name, _id: user._id },
+                    { name: project.name, status: project.status, description: project.description, priority: project.priority, _id: project._id }
+                )
             }
-
-        )
+        } else if (memberWithData.user && memberWithData.project) {
+            await notifyMemeberOnProjectRemoval(
+                { email: memberWithData.user.email, name: memberWithData.user.name, _id: memberWithData.user._id },
+                { name: memberWithData.project.name, status: memberWithData.project.status, description: memberWithData.project.description, priority: memberWithData.project.priority, _id: memberWithData.project._id }
+            )
+        }
     }
 
     return res.status(200).json(new ApiResponse(200, null, "member removed successfully"));

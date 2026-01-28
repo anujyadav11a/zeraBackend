@@ -31,6 +31,7 @@ const IssueHistorySchema = new mongoose.Schema(
     action: {
       type: String,
       enum: [
+        "ASSIGN",
         "CREATE",
         "REASSIGN",
         "STATUS_CHANGE",

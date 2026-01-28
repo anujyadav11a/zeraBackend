@@ -126,17 +126,17 @@ const assignIssueTOUser = asyncHandler(async (req, res) => {
 const reassignIssue = asyncHandler(async (req, res) => {
     const projectId = req.projectId; // From issueExistAuthorization middleware
     const { issueId } = req.params;
-    const { newAssigneeId, reason = "" } = req.body;
+    const { assignee, reason = "" } = req.body;
     const requesterId = req.user._id;
-    console.log("projectId:", projectId, "issueId:", issueId, "newAssigneeId:", newAssigneeId);
+    console.log("projectId:", projectId, "issueId:", issueId, "newAssigneeId:", assignee);
 
     // Validate input parameters
     if (!mongoose.Types.ObjectId.isValid(issueId)) {
         throw new ApiError(400, "Invalid issueId");
     }
 
-    if (!mongoose.Types.ObjectId.isValid(newAssigneeId)) {
-        throw new ApiError(400, "Invalid newAssigneeId");
+    if (!mongoose.Types.ObjectId.isValid(assignee)) {
+        throw new ApiError(400, "Invalid assignee");
     }
 
     // Start session for transaction
@@ -167,7 +167,7 @@ const reassignIssue = asyncHandler(async (req, res) => {
         const oldAssigneeId = issue.assignee || null;
 
         // Handle self-reassignment (issue already assigned to same user)
-        if (oldAssigneeId && oldAssigneeId.toString() === newAssigneeId) {
+        if (oldAssigneeId && oldAssigneeId.toString() === assignee) {
             // Log as history entry with optimistic locking
             let selfReassignQuery = Issue.findByIdAndUpdate(
                 issueId,
@@ -203,7 +203,7 @@ const reassignIssue = asyncHandler(async (req, res) => {
         let reassignQuery = Issue.findByIdAndUpdate(
             issueId,
             {
-                assignee: newAssigneeId,
+                assignee: assignee,
                 $inc: { __v: 1 },
               
             },
@@ -229,7 +229,7 @@ const reassignIssue = asyncHandler(async (req, res) => {
                 field: "assignee",
                 by: requesterId,
                 from: oldAssigneeId,
-                to: newAssigneeId,
+                to: assignee,
                 at: new Date()
             });
 

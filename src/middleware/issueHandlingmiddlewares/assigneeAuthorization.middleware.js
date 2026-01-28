@@ -5,7 +5,7 @@ import { ProjectMember } from "../../models/projectMember.models.js";
 
 const assigneeAuthorization = asyncHandler(async (req, res, next) => {  
     const projectId = req.projectId; // Get from issueExistAuthorization middleware
-    const { newAssigneeId } = req.body;
+    const { assignee } = req.body;
 
     // 1️⃣ Validate projectId exists
     if (!projectId) {
@@ -18,19 +18,19 @@ const assigneeAuthorization = asyncHandler(async (req, res, next) => {
     }
 
     // 3️⃣ Validate assignee is provided
-    if (!newAssigneeId) {
+    if (!assignee) {
         throw new ApiError(400, "Assignee is required");
     }
 
     // 4️⃣ Validate assignee format
-    if (!mongoose.Types.ObjectId.isValid(newAssigneeId)) {
+    if (!mongoose.Types.ObjectId.isValid(assignee)) {
         throw new ApiError(400, "Invalid assignee ID");
     }
 
     // 5️⃣ Check if assignee is a member of the project and is active
     const assigneeData = await ProjectMember.findOne({
         project: projectId,
-        user: newAssigneeId,
+        user: assignee,
         isActive: true
     });
 
@@ -43,6 +43,7 @@ const assigneeAuthorization = asyncHandler(async (req, res, next) => {
 
     // 6️⃣ Store assignee data in request for later use
     req.assigneeData = assigneeData;
+    req.assignee=assignee;
 
     next();
 });

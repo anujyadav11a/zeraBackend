@@ -1,5 +1,5 @@
 export const addProjectMemberTemplate = (memberData,  projectData) => {
-     const subject = `New Issue Assigned: ${issueData.title}`;
+     const subject = `New Project Assigned: ${memberData.title}`;
      const html = `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
                <h2 style="color: #333;">you are assigned with a new project</h2>
@@ -44,7 +44,7 @@ export const removeProjectMemberTemplate = (memberData, projectData) => {
 };
 
 export const changeMemberRoleTemplate = (memberData, projectData, oldRole, newRole) => {    
-        const subject = `Removed from Project: ${projectData?.name || 'N/A'}`;
+        const subject = `Role Changed: ${projectData?.name || 'N/A'}`;
      const html = `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
                <h2 style="color: #333;">Your role is changed for project</h2>
