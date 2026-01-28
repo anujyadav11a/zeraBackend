@@ -1,10 +1,4 @@
-/**
- * Email Template for Issue Assignment Notification
- * @param {Object} assigneeData - The assignee user object with name
- * @param {Object} issueData - The issue object with title, description, status, priority, and _id
- * @param {Object} projectData - The project object with name
- * @returns {Object} - Object containing subject and html
- */
+
 export const issueAssignmentTemplate = (assigneeData, issueData, projectData) => {
      const subject = `New Issue Assigned: ${issueData.title}`;
      const html = `
@@ -28,14 +22,6 @@ export const issueAssignmentTemplate = (assigneeData, issueData, projectData) =>
      return { subject, html };
 };
 
-/**
- * Email Template for Issue Reassignment Notification to Old Assignee
- * @param {Object} oldAssigneeData - The old assignee user object with name
- * @param {Object} newAssigneeData - The new assignee user object with name
- * @param {Object} issueData - The issue object with title, description, status, priority, and _id
- * @param {Object} projectData - The project object with name
- * @returns {Object} - Object containing subject and html
- */
 export const issueReassignmentOldAssigneeTemplate = (oldAssigneeData, newAssigneeData, issueData, projectData) => {
      const subject = `Issue Reassigned: ${issueData.title}`;
      const html = `

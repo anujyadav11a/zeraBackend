@@ -7,6 +7,9 @@ import { ROLES, MEMBER_ROLES } from "../constants/roles.js";
 import { ApiResponse } from "../utils/apiResponse.js";  
 import mongoose from "mongoose";
 import { buildquery } from "../utils/quirybuilder.js";
+import{ notifyuserOnprojectAssignment,
+     notifyMemeberOnProjectRemoval,
+     notifyMemberOnRoleChange } from "./Email/email.contrller.js";
 
 const createProject = asyncHandler(async (req, res) => {
    
@@ -122,6 +125,11 @@ const addMemberTOproject = asyncHandler(async (req, res)=>{
         throw new ApiError(409,"user is already a member of the project")
     }
 
+    const projectExist = await Project.findById(ProjectId)
+    if(!projectExist){
+        throw new ApiError(404,"project does not exist")
+    }
+
     const addMember= await ProjectMember.create({
         project:ProjectId,
         user:userId,
@@ -148,7 +156,14 @@ const addMemberTOproject = asyncHandler(async (req, res)=>{
     if(!addMember){
         throw new ApiError(500,"failed to add member to project")
     }
-
+    if(addMember){
+       
+            await notifyuserOnprojectAssignment(
+                {email:addMember.email,name:addMember.name},
+                { name:projectExist.name,status:projectExist.status,description:projectExist.description,priority:projectExist.priority}
+            )
+       
+    }
     return res.status(200)
     .json(
        new ApiResponse(
