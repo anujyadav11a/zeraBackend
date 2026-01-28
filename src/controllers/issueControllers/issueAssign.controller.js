@@ -6,7 +6,7 @@ import { Issue } from "../../models/IsuueSchema/issue.models.js";
 import { ProjectMember } from "../../models/projectMember.models.js";
 import { User } from "../../models/user.models.js";
 import { buildPopulation, applyPopulation } from "../../utils/populationBuilder.js";
-import { notifyAssignee } from "../Email/email.contrller.js";
+import { notifyAssignee, notifyOldAssigneeOnReassignment } from "../Email/email.contrller.js";
 import { IssueHistory } from "../../models/IsuueSchema/issue.models.js";
 
 const assignIssueTOUser = asyncHandler(async (req, res) => {
@@ -67,7 +67,8 @@ const assignIssueTOUser = asyncHandler(async (req, res) => {
             const populateArray = buildPopulation(populateParam);
             updateQuery = applyPopulation(updateQuery, populateArray);
         } else {
-            updateQuery = updateQuery.populate("assignee", "name email");
+            updateQuery = updateQuery.populate("assignee", "name email")
+                .populate("project", "name");
         }
 
         const updatedIssue = await updateQuery;
@@ -85,7 +86,7 @@ const assignIssueTOUser = asyncHandler(async (req, res) => {
 
         await IssueHistory.insertMany(historyEntries.map(entry => ({
 
-            issue: issueId,
+            Issue: issueId,
             ...entry
         })),
             { session }
@@ -184,7 +185,8 @@ const reassignIssue = asyncHandler(async (req, res) => {
                 selfReassignQuery = applyPopulation(selfReassignQuery, populateArray);
             } else {
                 selfReassignQuery = selfReassignQuery.populate("assignee", "name email")
-                    .populate("reporter", "name email");
+                    .populate("reporter", "name email")
+                    .populate("project", "name");
             }
 
             const updatedIssue = await selfReassignQuery;
@@ -216,7 +218,7 @@ const reassignIssue = asyncHandler(async (req, res) => {
         } else {
             reassignQuery = reassignQuery.populate("assignee", "name email")
                 .populate("reporter", "name email")
-                .populate("history.by", "name email");
+                .populate("project", "name");
         }
 
         const updatedIssue = await reassignQuery;
@@ -233,7 +235,7 @@ const reassignIssue = asyncHandler(async (req, res) => {
 
             await IssueHistory.insertMany(historyEntries.map(entry => ({
 
-                issue: issueId,
+                Issue: issueId,
                 ...entry
             })),
                 { session }
@@ -242,6 +244,24 @@ const reassignIssue = asyncHandler(async (req, res) => {
         // Commit transaction before sending notification
         await session.commitTransaction();
         session.endSession();
+
+        // Send notification to old assignee if there was one (AFTER transaction is committed)
+        if (oldAssigneeId) {
+            try {
+                const oldAssigneeData = await User.findById(oldAssigneeId).select("email name");
+                if (oldAssigneeData) {
+                    await notifyOldAssigneeOnReassignment(
+                        { email: oldAssigneeData.email, name: oldAssigneeData.name },
+                        { name: updatedIssue.assignee.name },
+                        { _id: updatedIssue._id, title: updatedIssue.title, description: updatedIssue.description, status: updatedIssue.status, priority: updatedIssue.priority, reason: reason },
+                        { name: updatedIssue.project?.name || 'Unknown Project' }
+                    );
+                }
+            } catch (notificationError) {
+                console.error("Failed to send notification email to old assignee:", notificationError);
+                // Don't fail the request if notification fails
+            }
+        }
 
         // Send notification to new assignee (AFTER transaction is committed)
         try {
