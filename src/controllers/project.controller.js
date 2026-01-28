@@ -4,15 +4,17 @@ import { Project } from "../models/project.models.js";
 import { ProjectMember } from "../models/projectMember.models.js";
 import { User } from "../models/user.models.js";
 import { ROLES, MEMBER_ROLES } from "../constants/roles.js";
-import { ApiResponse } from "../utils/apiResponse.js";  
+import { ApiResponse } from "../utils/apiResponse.js";
 import mongoose from "mongoose";
 import { buildquery } from "../utils/quirybuilder.js";
-import{ notifyuserOnprojectAssignment,
-     notifyMemeberOnProjectRemoval,
-     notifyMemberOnRoleChange } from "./Email/email.contrller.js";
+import {
+    notifyuserOnprojectAssignment,
+    notifyMemeberOnProjectRemoval,
+    notifyMemberOnRoleChange
+} from "./Email/email.contrller.js";
 
 const createProject = asyncHandler(async (req, res) => {
-   
+
     const { name, description, startdate, enddate } = req.body;
     if (!name || !name.trim()) {
         throw new ApiError(400, "project name is required");
@@ -48,7 +50,7 @@ const createProject = asyncHandler(async (req, res) => {
         name: trimmedName,
         description: description || "",
         createdBy: req.user?._id,
-        projectHead:req.user?.name
+        projectHead: req.user?.name
     };
     if (startDate) projectPayload.startDate = startDate;
     if (endDate) projectPayload.endDate = endDate;
@@ -93,7 +95,7 @@ const createProject = asyncHandler(async (req, res) => {
             try {
                 await Project.findByIdAndDelete(projectCreate._id);
             } catch (err) {
-               throw new ApiError(500, "project member creation failed, and cleanup also failed, manual cleanup may be required");
+                throw new ApiError(500, "project member creation failed, and cleanup also failed, manual cleanup may be required");
             }
             throw new ApiError(500, "project member creation failed");
         }
@@ -102,8 +104,8 @@ const createProject = asyncHandler(async (req, res) => {
     return res.status(201).json(new ApiResponse(201, projectCreate, "project created successfully"));
 });
 
-const addMemberTOproject = asyncHandler(async (req, res)=>{
-    const { ProjectId,userId,role}=req.body
+const addMemberTOproject = asyncHandler(async (req, res) => {
+    const { ProjectId, userId, role } = req.body
 
     // validate required fields (supports non-string ids as well)
     if ([ProjectId, userId, role].some(field => !field || (typeof field === 'string' && field.trim() === ''))) {
@@ -117,62 +119,62 @@ const addMemberTOproject = asyncHandler(async (req, res)=>{
     }
 
     const memberexist = await ProjectMember.findOne({
-        project:ProjectId,
+        project: ProjectId,
         user: userId
     })
 
-    if(memberexist){
-        throw new ApiError(409,"user is already a member of the project")
+    if (memberexist) {
+        throw new ApiError(409, "user is already a member of the project")
     }
 
     const projectExist = await Project.findById(ProjectId)
-    if(!projectExist){
-        throw new ApiError(404,"project does not exist")
+    if (!projectExist) {
+        throw new ApiError(404, "project does not exist")
     }
 
-    const addMember= await ProjectMember.create({
-        project:ProjectId,
-        user:userId,
-        role:role,
-        joinedAt:new Date(),
-        isActive:true
+    const addMember = await ProjectMember.create({
+        project: ProjectId,
+        user: userId,
+        role: role,
+        joinedAt: new Date(),
+        isActive: true
     })
-    
 
-      
+
+
+    try {
+        await Project.findByIdAndUpdate(ProjectId, { $inc: { memberCount: 1 } });
+    } catch (err) {
+
         try {
-            await Project.findByIdAndUpdate(ProjectId, { $inc: { memberCount: 1 } });
-        } catch (err) {
-           
-            try {
-                await ProjectMember.deleteOne({ _id: addMember._id });
-            } catch (rollbackErr) {
-                
-                throw new ApiError(500, "Member added but failed to update project count; manual cleanup may be required");
-            }
-            throw new ApiError(500, "failed to update project member count");
-        }
+            await ProjectMember.deleteOne({ _id: addMember._id });
+        } catch (rollbackErr) {
 
-    if(!addMember){
-        throw new ApiError(500,"failed to add member to project")
+            throw new ApiError(500, "Member added but failed to update project count; manual cleanup may be required");
+        }
+        throw new ApiError(500, "failed to update project member count");
     }
-    if(addMember){
-       
-            await notifyuserOnprojectAssignment(
-                {email:addMember.email,name:addMember.name},
-                { name:projectExist.name,status:projectExist.status,description:projectExist.description,priority:projectExist.priority}
-            )
-       
+
+    if (!addMember) {
+        throw new ApiError(500, "failed to add member to project")
+    }
+    if (addMember) {
+
+        await notifyuserOnprojectAssignment(
+            { email: addMember.email, name: addMember.name },
+            { name: projectExist.name, status: projectExist.status, description: projectExist.description, priority: projectExist.priority }
+        )
+
     }
     return res.status(200)
-    .json(
-       new ApiResponse(
-            200,
-            addMember,
-            "new member added to project successfully"
+        .json(
+            new ApiResponse(
+                200,
+                addMember,
+                "new member added to project successfully"
 
+            )
         )
-    )
 
 })
 
@@ -180,8 +182,8 @@ const ListALLMembersofProject = asyncHandler(async (req, res) => {
     const { projectId } = req.params;
 
     if (!mongoose.Types.ObjectId.isValid(projectId)) {
-  throw new ApiError(400, 'Invalid projectId');
-}
+        throw new ApiError(400, 'Invalid projectId');
+    }
 
 
     // ensure project exists
@@ -191,7 +193,7 @@ const ListALLMembersofProject = asyncHandler(async (req, res) => {
     }
 
     // pagination and limits
-  const { page, limit, skip } = buildquery(req.query);
+    const { page, limit, skip } = buildquery(req.query);
 
     const { role, isActive, search, sortBy, sortOrder } = req.query;
 
@@ -208,7 +210,7 @@ const ListALLMembersofProject = asyncHandler(async (req, res) => {
     else if (isActive === 'false') match.isActive = false;
 
     // Sorting
-    const allowedSortFields = ['joinedAt', 'role' ];
+    const allowedSortFields = ['joinedAt', 'role'];
     let sortField = 'joinedAt';
     if (sortBy && allowedSortFields.includes(sortBy)) sortField = sortBy;
     const order = sortOrder === 'asc' ? 1 : -1;
@@ -276,52 +278,52 @@ const ListALLMembersofProject = asyncHandler(async (req, res) => {
     }
 
     const members = (agg[0] && agg[0].data) || [];
-return res.status(200).json(new ApiResponse(200, {
-  pagination: { total, page, limit, totalPages },
-  members
-}, 'project members fetched successfully'));
+    return res.status(200).json(new ApiResponse(200, {
+        pagination: { total, page, limit, totalPages },
+        members
+    }, 'project members fetched successfully'));
 
 });
 
-const removeMemberFromProject = asyncHandler(async( req, res)=>{
+const removeMemberFromProject = asyncHandler(async (req, res) => {
     // allow middleware to provide projectId (req.projectId) or fall back to body/params/query
     const bodyProjectId = req.body?.projectId || req.body?.ProjectId;
     const projectId = req.projectId || bodyProjectId || req.params?.projectId || req.query?.projectId;
     const { userId } = req.body;
 
-    
+
 
     if ([projectId, userId].some(field => !field || (typeof field === 'string' && field.trim() === ''))) {
         throw new ApiError(400, "all fields are required")
     }
 
-    
+
 
     const removeMember = await ProjectMember.findOne({ project: projectId, user: userId });
-   
+
 
     if (!removeMember) {
         return res.status(404).json(new ApiResponse(404, null, "user is not member of project"));
     }
 
-    
+
     const deleteResult = await ProjectMember.deleteOne({ _id: removeMember._id });
 
     if (!deleteResult || deleteResult.deletedCount === 0) {
         throw new ApiError(500, "failed to remove member from project");
     }
 
-    
+
     try {
         await Project.findByIdAndUpdate(projectId, { $inc: { memberCount: -1 } });
 
-        
+
         const proj = await Project.findById(projectId).select('memberCount');
         if (proj && typeof proj.memberCount === 'number' && proj.memberCount < 0) {
             await Project.findByIdAndUpdate(projectId, { $set: { memberCount: 0 } });
         }
     } catch (err) {
-        
+
         const payload = {
             project: removeMember.project,
             user: removeMember.user,
@@ -332,43 +334,55 @@ const removeMemberFromProject = asyncHandler(async( req, res)=>{
         try {
             await ProjectMember.create(payload);
         } catch (rollbackErr) {
-          
+
             throw new ApiError(500, "Member removed but failed to update project count; manual cleanup may be required");
         }
 
         throw new ApiError(500, "failed to update project member count");
+    }
+    if (deleteResult) {
+        await notifyMemeberOnProjectRemoval(
+            { email: removeMember.email, name: removeMember.name },
+            {
+                name: removeMember.project.name,
+                status: removeMember.project.status,
+                description: removeMember.project.description,
+                priority: removeMember.project.priority
+            }
+
+        )
     }
 
     return res.status(200).json(new ApiResponse(200, null, "member removed successfully"));
 
 })
 
-const getProjectDetails = asyncHandler(async (req,res)=>{
-    const {projectId}= req.params
-    if(!projectId || projectId.trim()===""){
-        throw new ApiError(400,"projectId is required")
+const getProjectDetails = asyncHandler(async (req, res) => {
+    const { projectId } = req.params
+    if (!projectId || projectId.trim() === "") {
+        throw new ApiError(400, "projectId is required")
     }
 
     const ProjectExist = await Project.findById(projectId)
-    if(!ProjectExist){
-        throw new ApiError(404,"project does not exits")
+    if (!ProjectExist) {
+        throw new ApiError(404, "project does not exits")
 
     }
 
     const Projectdetails = await Project.findById(projectId)
-    
-    if(!Projectdetails){
-        throw new ApiError(401,"failed to get Project details")
+
+    if (!Projectdetails) {
+        throw new ApiError(401, "failed to get Project details")
     }
 
     return res.status(200)
-    .json(
-        new ApiResponse(
-            200,
-            Projectdetails,
-            "details fetch successfully"
+        .json(
+            new ApiResponse(
+                200,
+                Projectdetails,
+                "details fetch successfully"
+            )
         )
-    )
 
 
 
@@ -396,6 +410,18 @@ export const changeMemberRole = asyncHandler(async (req, res) => {
 
     member.role = role;
     await member.save();
+
+    // Notify member about role change
+    const user = await User.findById(member.user).select('email name');
+    const project = await Project.findById(member.project).select('name status description priority');
+    
+    if (user && project) {
+        await notifyMemberOnRoleChange(
+            { email: user.email, name: user.name },
+            { name: project.name, status: project.status, description: project.description, priority: project.priority },
+            role
+        );
+    }
 
     res.status(200).json({
         message: "Project member role updated successfully",
