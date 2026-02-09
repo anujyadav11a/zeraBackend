@@ -1,7 +1,8 @@
 import express from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';   
-
+import { globalErrorHandler, notFoundHandler } from './middleware/globalError.middleware.js';
+import { logger } from './utils/logger.js';
 
  const app = express();
 
@@ -37,6 +38,9 @@ import cookieParser from 'cookie-parser';
 
  // Explicit preflight request handler
  app.options('*', cors(corsOptions));
+
+ // Request logging middleware
+ app.use(logger.logRequest.bind(logger));
 
  // Security headers middleware
  app.use((req, res, next) => {
@@ -88,5 +92,22 @@ import cookieParser from 'cookie-parser';
  // Issue-Route
  import { issueRouter } from './routes/issue.route.js';
  app.use("/api/v1/issue",issueRouter)
+
+ // Health check endpoint
+ app.get('/health', (req, res) => {
+   res.status(200).json({
+     success: true,
+     message: 'Server is healthy',
+     timestamp: new Date().toISOString(),
+     uptime: process.uptime()
+   });
+ });
+
+ // Handle 404 for undefined routes
+ app.use(notFoundHandler);
+
+ // Global error handling middleware (must be last)
+ app.use(globalErrorHandler);
+
  export default app
 
