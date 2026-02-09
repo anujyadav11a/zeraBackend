@@ -7,11 +7,53 @@ import cookieParser from 'cookie-parser';
 
  // Start email worker
  import "./controllers/Email/email.worker.js";
+ const allowedOrigins = (process.env.CORS_ORIGIN || "http://localhost:3000").split(',').map(o => o.trim());
 
- app.use(cors({
-    origin: process.env.CORS_ORIGIN,
-    Credential:true
- }));
+ const corsOptions = {
+   origin: (origin, callback) => {
+     if (!origin || allowedOrigins.includes(origin)) {
+       callback(null, true);
+     } else {
+       callback(new Error("Not allowed by CORS"));
+     }
+   },
+   credentials: true,
+   methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+   allowedHeaders: ["Content-Type", "Authorization"],
+   exposedHeaders: ["Content-Range", "X-Content-Range"],
+   maxAge: 86400 // 24 hours
+ };
+
+ app.use(cors(corsOptions));
+
+ // Explicit preflight request handler
+ app.options('*', cors(corsOptions));
+
+ // Security headers middleware
+ app.use((req, res, next) => {
+   // Prevent MIME type sniffing
+   res.setHeader('X-Content-Type-Options', 'nosniff');
+   
+   // Prevent clickjacking attacks
+   res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+   
+   // Enable XSS protection
+   res.setHeader('X-XSS-Protection', '1; mode=block');
+   
+   // Enforce HTTPS (set to higher value in production)
+   res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+   
+   // CSP policy - adjust based on your needs
+   res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'");
+   
+   // Control referrer information
+   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+   
+   // Prevent DNS prefetching
+   res.setHeader('X-DNS-Prefetch-Control', 'off');
+   
+   next();
+ });
 
  app.use(express.json({limit:"10kb"}))
  app.use(express.urlencoded({limit:"10kb"}))
