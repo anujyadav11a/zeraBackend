@@ -17,10 +17,16 @@ import cookieParser from 'cookie-parser';
        callback(new Error("Not allowed by CORS"));
      }
    },
-   credentials: true,
+   credentials: true,// this set acces control allow  credentials to true
    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-   allowedHeaders: ["Content-Type", "Authorization"],
-   exposedHeaders: ["Content-Range", "X-Content-Range"],
+   allowedHeaders: ["Content-Type",
+    "Authorization",
+    "X-Requested-With",
+    "X-Request-Id",
+    "Accept"],
+   exposedHeaders: [],// filled according to frontend needs
+   preflightContinue: false,
+   optionsSuccessStatus: 204,
    maxAge: 86400 // 24 hours
  };
 
