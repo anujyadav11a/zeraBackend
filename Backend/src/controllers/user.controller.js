@@ -124,7 +124,8 @@ const userLogout = asyncHandler(async (req, res) => {
 
     const Option = {
         httpOnly: true,
-        ssecure: true
+        secure: true,
+        sameSite: "lax"
     }
 
     return res.status(200)
@@ -136,7 +137,7 @@ const userLogout = asyncHandler(async (req, res) => {
 })
 
 const refreshAccessToken = asyncHandler(async (req, res) => {
-    const incomingRefreshToken = req.cookie.refreshToken || req.body.refreshToken
+    const incomingRefreshToken = req.cookies.refreshToken || req.body.refreshToken
 
     if (!incomingRefreshToken) {
         throw new ApiError(401, "unauthorised request")
@@ -157,25 +158,23 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
 
         const option = {
             httpOnly: true,
-            secure: true
+            secure: true,
+            sameSite: "lax"
         }
 
-        const { newrefreshToken, accessToken } = await generateAccessandRefreshToken(user._id)
+        const { accessToken, refreshToken: newRefreshToken } = await generateAccessandRefreshToken(user._id)
 
         res.status(200)
-            .cookie("refreshToken", newrefreshToken, option)
+            .cookie("refreshToken", newRefreshToken, option)
             .cookie("accessToken", accessToken, option)
-
-
             .json(
                 new ApiResponse(
                     200,
                     {
                         accessToken,
-                        refreshtoken: newrefreshToken
+                        refreshToken: newRefreshToken
                     },
                     "token is refresh"
-
                 )
             )
     } catch (error) {
