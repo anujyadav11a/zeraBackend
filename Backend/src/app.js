@@ -11,10 +11,13 @@ import cookieParser from 'cookie-parser';
 
  const corsOptions = {
    origin: (origin, callback) => {
-     if (!origin || allowedOrigins.includes(origin)) {
+     // Allow requests with no origin (mobile apps, Postman) only in development
+     if (!origin && process.env.NODE_ENV === 'development') {
+       callback(null, true);
+     } else if (origin && allowedOrigins.includes(origin)) {
        callback(null, true);
      } else {
-       callback(new Error("Not allowed by CORS"));
+       callback(new Error("Access denied by CORS policy"));
      }
    },
    credentials: true,// this set acces control allow  credentials to true
@@ -49,8 +52,16 @@ import cookieParser from 'cookie-parser';
    // Enforce HTTPS (set to higher value in production)
    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
    
-   // CSP policy - adjust based on your needs
-   res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'");
+   // CSP policy - enhanced security
+   res.setHeader('Content-Security-Policy', 
+     "default-src 'self'; " +
+     "script-src 'self'; " +
+     "style-src 'self' 'unsafe-inline'; " +
+     "img-src 'self' data: https:; " +
+     "font-src 'self'; " +
+     "connect-src 'self'; " +
+     "frame-ancestors 'none';"
+   );
    
    // Control referrer information
    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
