@@ -8,6 +8,7 @@ import { projectLeaderAuthorization } from "../middleware/projectLeaderAuthoriza
 import { issueExistAuthorization } from "../middleware/issueHandlingmiddlewares/issueExistAuthorization.middleware.js";
 import { authorizeIssueAccess } from "../middleware/issueHandlingmiddlewares/issueAcess.middleware.js";
 import {assigneeAuthorization} from "../middleware/issueHandlingmiddlewares/assigneeAuthorization.middleware.js";
+import { apiLimiter } from "../middleware/rateLimiter.middleware.js";
 import{
      
     DeleteIssue,
@@ -24,15 +25,12 @@ import {
 
 const issueRouter = Router();
 
-
-
-
 // Get/Update/Delete issue - derives projectId from issueId
-issueRouter.route("/get-Issue/:issueId").get(verifyToken,issueExistAuthorization,projectMemberAuthorization, GetIssue);
-issueRouter.route("/update-Issue/:issueId").put(verifyToken, issueExistAuthorization,authorizeIssueAccess, UpdateIssue);
-issueRouter.route("/delete-Issue/:issueId").delete(verifyToken, issueExistAuthorization,projectLeaderAuthorization, DeleteIssue);
-issueRouter.route("/assign-issue/:issueId").post(verifyToken, issueExistAuthorization, assigneeAuthorization, projectLeaderAuthorization, assignIssueTOUser);
-issueRouter.route("/reassign-issue/:issueId").post(verifyToken, issueExistAuthorization, assigneeAuthorization, projectLeaderAuthorization, reassignIssue);
-issueRouter.route("/unassign-issue/:issueId").post(verifyToken, issueExistAuthorization, projectLeaderAuthorization, unassignIssue);
+issueRouter.route("/get-Issue/:issueId").get(apiLimiter, verifyToken, issueExistAuthorization, projectMemberAuthorization, GetIssue);
+issueRouter.route("/update-Issue/:issueId").put(apiLimiter, verifyToken, issueExistAuthorization, authorizeIssueAccess, UpdateIssue);
+issueRouter.route("/delete-Issue/:issueId").delete(apiLimiter, verifyToken, issueExistAuthorization, projectLeaderAuthorization, DeleteIssue);
+issueRouter.route("/assign-issue/:issueId").post(apiLimiter, verifyToken, issueExistAuthorization, assigneeAuthorization, projectLeaderAuthorization, assignIssueTOUser);
+issueRouter.route("/reassign-issue/:issueId").post(apiLimiter, verifyToken, issueExistAuthorization, assigneeAuthorization, projectLeaderAuthorization, reassignIssue);
+issueRouter.route("/unassign-issue/:issueId").post(apiLimiter, verifyToken, issueExistAuthorization, projectLeaderAuthorization, unassignIssue);
 
 export {issueRouter}

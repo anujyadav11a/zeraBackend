@@ -3,6 +3,7 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser';   
 import { globalErrorHandler, notFoundHandler } from './middleware/globalError.middleware.js';
 import { logger } from './utils/logger.js';
+import { generalLimiter } from './middleware/rateLimiter.middleware.js';
 
  const app = express();
 
@@ -37,7 +38,10 @@ import { logger } from './utils/logger.js';
  app.use(cors(corsOptions));
 
  // Explicit preflight request handler
- app.options('*', cors(corsOptions));
+//  app.options('/*', cors(corsOptions));
+
+ // Apply general rate limiting to all requests
+ app.use(generalLimiter);
 
  // Request logging middleware
  app.use(logger.logRequest.bind(logger));
