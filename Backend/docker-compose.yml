@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  backend:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    container_name: backend-app
+    ports:
+      - "2000:8000"  # Map host port 2000 to container port 8000 (from .env)
+    environment:
+      - NODE_ENV=development
+      - PORT=8000
+      - REDIS_HOST=redis  # Use service name for Redis connection
+      - REDIS_PORT=6379
+      - CORS_ORIGIN=http://localhost:3000,http://localhost:2000,http://127.0.0.1:2000
+    env_file:
+      - .env
+    volumes:
+      - ./logs:/app/logs
+      - ./public/temp:/app/public/temp
+    restart: unless-stopped
+    depends_on:
+      - redis
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:8000', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis-cache
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  redis_data:

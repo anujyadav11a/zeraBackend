@@ -107,6 +107,21 @@ import { generalLimiter } from './middleware/rateLimiter.middleware.js';
    });
  });
 
+//  Welcome endpoint for root path home route ()
+ app.get('/', (req, res) => {
+   res.status(200).json({
+     success: true,
+     message: 'Welcome to Backend API',
+     version: '1.0.0',
+     endpoints: {
+       health: '/health',
+       users: '/api/v1/User',
+       projects: '/api/v1/project', 
+       issues: '/api/v1/issue'
+     }
+   });
+ });
+
  // Handle 404 for undefined routes
  app.use(notFoundHandler);
 
