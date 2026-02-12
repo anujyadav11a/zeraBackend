@@ -7,6 +7,7 @@ import { projectMemberAuthorization } from "../middleware/projectMemberauth.midd
 import { projectLeaderAuthorization } from "../middleware/projectLeaderAuthorization.middleware.js";
 import { createIssue } from "../controllers/issueControllers/issue.contoller.js";
 import { ListIssues  } from "../controllers/issueControllers/issue.contoller.js";
+import { projectCreationLimiter, apiLimiter, issueCreationLimiter } from "../middleware/rateLimiter.middleware.js";
 
 import {
     createProject,
@@ -20,14 +21,14 @@ import {
 
 const Projectrouter= Router();
 
-Projectrouter.route("/create-Project").post(verifyToken,createProject)
-Projectrouter.route("/get-ProjectDetails/:projectId").get(verifyToken, validateProjectId, getProjectDetails);
-Projectrouter.route("/add-Member").post(verifyToken, projectCreatorAuthorization, addMemberTOproject)
-Projectrouter.route("/list-Members/:projectId").get(verifyToken,projectMemberAuthorization,ListALLMembersofProject)
-Projectrouter.route("/remove-Member").post(verifyToken, projectCreatorAuthorization, removeMemberFromProject)
+Projectrouter.route("/create-Project").post(projectCreationLimiter, verifyToken, createProject)
+Projectrouter.route("/get-ProjectDetails/:projectId").get(apiLimiter, verifyToken, validateProjectId, getProjectDetails);
+Projectrouter.route("/add-Member").post(apiLimiter, verifyToken, projectCreatorAuthorization, addMemberTOproject)
+Projectrouter.route("/list-Members/:projectId").get(apiLimiter, verifyToken, projectMemberAuthorization, ListALLMembersofProject)
+Projectrouter.route("/remove-Member").post(apiLimiter, verifyToken, projectCreatorAuthorization, removeMemberFromProject)
 
 // change member role: only project leader (for that project) or global admin
-Projectrouter.route("/change-member-role/:memberId").post(verifyToken, projectLeaderAuthorization, changeMemberRole)
-Projectrouter.route("/:projectId/issues").post(verifyToken, projectMemberAuthorization, validateProjectId, createIssue);
-Projectrouter.route("/:projectId/list-Issues").get(verifyToken,  validateProjectId,projectMemberAuthorization, ListIssues);
+Projectrouter.route("/change-member-role/:memberId").post(apiLimiter, verifyToken, projectLeaderAuthorization, changeMemberRole)
+Projectrouter.route("/:projectId/issues").post(issueCreationLimiter, verifyToken, projectMemberAuthorization, validateProjectId, createIssue);
+Projectrouter.route("/:projectId/list-Issues").get(apiLimiter, verifyToken, validateProjectId, projectMemberAuthorization, ListIssues);
 export {Projectrouter}

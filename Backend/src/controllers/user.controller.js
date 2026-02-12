@@ -3,6 +3,7 @@ import { ApiError } from "../utils/apierror.js";
 import { User } from "../models/user.models.js"
 import { ApiResponse } from "../utils/apiResponse.js";
 import bcrypt from "bcrypt"
+import jwt from "jsonwebtoken"
 import mongoose from "mongoose";
 
 const generateAccessandRefreshToken = async (userId) => {
@@ -96,10 +97,16 @@ const userLogin = asyncHandler(async (req, res) => {
 
     const Option = {
         httpOnly: true,
-        secure: true
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: "lax",
+        maxAge: 15 * 60 * 1000, // 15 minutes for access token
+        path: '/'
     }
     return res.status(200)
-        .cookie("refreshToken", refreshToken, Option)
+        .cookie("refreshToken", refreshToken, {
+            ...Option,
+            maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days for refresh token
+        })
         .cookie("accessToken", accessToken, Option)
         .json(
             new ApiResponse(200, LoggedinUser, "user logged in successfully")
@@ -123,7 +130,9 @@ const userLogout = asyncHandler(async (req, res) => {
 
     const Option = {
         httpOnly: true,
-        ssecure: true
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: "lax",
+        path: '/'
     }
 
     return res.status(200)
@@ -135,7 +144,7 @@ const userLogout = asyncHandler(async (req, res) => {
 })
 
 const refreshAccessToken = asyncHandler(async (req, res) => {
-    const incomingRefreshToken = req.cookie.refreshToken || req.body.refreshToken
+    const incomingRefreshToken = req.cookies.refreshToken || req.body.refreshToken
 
     if (!incomingRefreshToken) {
         throw new ApiError(401, "unauthorised request")
@@ -156,25 +165,27 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
 
         const option = {
             httpOnly: true,
-            secure: true
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: "lax",
+            path: '/'
         }
 
-        const { newrefreshToken, accessToken } = await generateAccessandRefreshToken(user._id)
+        const { accessToken, refreshToken: newRefreshToken } = await generateAccessandRefreshToken(user._id)
 
         res.status(200)
-            .cookie("refreshToken", newrefreshToken, option)
-            .cookie("accessToken", accessToken, option)
-
-
+            .cookie("refreshToken", newRefreshToken, {
+                ...option,
+                maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+            })
+            .cookie("accessToken", accessToken, {
+                ...option,
+                maxAge: 15 * 60 * 1000 // 15 minutes
+            })
             .json(
                 new ApiResponse(
                     200,
-                    {
-                        accessToken,
-                        refreshtoken: newrefreshToken
-                    },
+                    { message: "Tokens refreshed successfully" },
                     "token is refresh"
-
                 )
             )
     } catch (error) {
